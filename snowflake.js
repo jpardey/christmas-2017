@@ -3,8 +3,11 @@
 function genPoint(n){
     var li = [];
     var i;
+    var p;
     for (i=0; i< n; ++i) {
-        li.push([Math.random(), Math.random()]) ;
+        p =  [Math.random(), Math.random()];
+        if (p[0] > p[1]) li.push(p); 
+        else li.push([p[1], p[0]]);
     }
     return li;
 }
@@ -36,139 +39,217 @@ function pointOnCircle(origin, radius) {
     return [origin[0]+radius*Math.cos(angle), origin[1]+radius*Math.sin(angle)];
 }
 
-function triangulationTest() {
-    var canvas = document.getElementById("dotdemo");
-    var ctx = canvas.getContext("2d");
-    var points=[] ; //= genPoint(10);
+var canvas = document.getElementById("dotdemo");
+var ctx = canvas.getContext("2d");
+
+function Triangulation(ma, mb, mc) {
+    var points=[] ; 
     var i; 
-/*    for (i=0; i<len; ++i) {
-        if (points[i][0] + points[i][1] > 1) {
-            points[i] = [1 - points[i][0], 1 - points[i][1]];
-        }
-        points[i][0] *= 400;
-        points[i][1] *= 400;
-        points[i][0] = Math.round(points[i][0]);
-        points[i][1] = Math.round(points[i][1]);
-        points[i][0] += 50;
-        points[i][1] += 50;
-    } 
-    console.log(points);
-*/
-    points.push([0,0]);
-    points.push([500,0]);
-    points.push([0,500]);
+    points.push(ma);
+    points.push(mb);
+    points.push(mc);
     var triangles = [];
-    triangles.push([0, 1, 2]);
+    triangles.push([0, 1, 2]); //list of list of verticies
 
-    var addPoint = function(point) { 
-    //    var i;
-    //    for (i = 0; i<len; ++i) {
-            var x = points.length;
-            points.push(point);
-            badTries = [];
-            var j;
-            for (j=0; j<triangles.length; ++j) {
-                if (inCircumcircle(points[triangles[j][0]] , points[triangles[j][1]], points[triangles[j][2]], points[x])) {
-                    badTries.push(j);
-                    //console.log("Pushed " + j + " into bad triangles");
-                }
-            }
-            //console.log("bad triangles:");
-            //console.log(badTries);
-            //console.log(triangles);
-            
-            var poly = []; //THIS IS WRONG. Poly is not necessarily star shaped!
-            edges = {};
-            for (j=0;j<badTries.length;++j) {
-                var k;
-                for (k = 0; k<3; ++k) {
-                    var a = triangles[badTries[j]][k];
-                    var b = triangles[badTries[j]][(k+1)%3];
-                    var edgestr = (a>b)? "e"+a+","+b: "e"+b+","+a;
-                    if (edges.hasOwnProperty(edgestr)) {edges[edgestr] = -1;}
-                    else {edges[edgestr] = [a,b];}
-                } 
-            }
-            var e;
-            for (e in edges) {
-                if (edges.hasOwnProperty(e) && (edges[e] !== -1)) {
-                    poly.push(e);
-                }
-            }
-            //console.log("Poly size: " + poly.length)
-            var goodTries = [];
-            var badTriesSet = new Set(badTries);
-            for (j=0; j<triangles.length; ++j) {
-                if (!(badTriesSet.has(j))) {
-                    goodTries.push(triangles[j]);
-                }
-            }
-            //console.log("good triangles:");
-            //console.log(goodTries);
-            triangles.length = 0;
-            for (j=0; j<goodTries.length; ++j) {
-                triangles.push(goodTries[j]);
-            }
-            //console.log("triangles, edges, polygons")
-            //console.log(triangles);
-            //console.log(edges);
-            //console.log(poly);
-
-            for (j=0; j<poly.length; ++j) {
-                e = poly[j];
-                triangles.push([edges[e][0], edges[e][1], x]);
-                ////console.log("New triangle:");
-                //console.log([edges[e][0], edges[e][1], x]);
-            }
-       // }
+    var getFullTriangulation = function () {
+        return triangles;
     }
     
-    var addAndDraw = function(ev) {
-        if (ev) {
-            if (ev.layerX + ev.layerY >= 500) {return;}
-            console.time("add")
-            addPoint([ev.layerX, ev.layerY]); 
-            console.timeEnd("add")
-        }
-        console.time("draw")
-        ctx.clearRect(0,0,canvas.width, canvas.height);
-        for (l = 0; l<triangles.length; ++l) {
-        a = points[triangles[l][0]];
-        b = points[triangles[l][1]];
-        c = points[triangles[l][2]];
-        ctx.beginPath();
-        ctx.moveTo(a[0], a[1]);
-        ctx.lineTo(b[0], b[1]);
-        ctx.lineTo(c[0], c[1]);
-        ctx.lineTo(a[0], a[1]);
-        ctx.stroke();
-        }
-        console.timeEnd("draw")
+    //Get the triangulation without points 0, 1, 2
+    var getTriangulation = function() {
+        var realTriangles = [];
+        var i;
+        var j;
+        outer: for (i = 0; i<triangles.length; ++i) {
+            for (j=0; j<3; ++j) {
+                if (triangles[i][j] < 3) continue outer;
+            } 
+            realTriangles.push(triangles[i]);
+        } 
+        return realTriangles;
     }
 
-/*    var l;
-    for (l = 0; l<len; ++l) {
-        console.log("Adding point " + l);
-        addPoint(l);
-        console.log(triangles.length); 
+    //Get each unique edge from triangulation
+    var getEdges = function () {
+        var j;
+        var edges={};
+        for (j=0;j<triangles.length;++j) {
+            var k;
+            for (k = 0; k<3; ++k) {
+                var a = triangles[j][k];
+                var b = triangles[j][(k+1)%3]; //Next node
+                if ((a < 3) || (b<3)) continue;
+                var edgestr = (a>b)? "e"+a+","+b: "e"+b+","+a; //Unique and identical string for each edge, orientation independent.
+                    //Might be slow, but seems fast enough for our purposes.
+                edges[edgestr] = [a,b];  //Add verticies as value to reduce string ops slightly.
+            } 
+        }
+        return Object.values(edges);
     }
-*/
-    /*for (l = 0; l<triangles.length; ++l) {
-        a = points[triangles[l][0]];
-        b = points[triangles[l][1]];
-        c = points[triangles[l][2]];
-        ctx.beginPath();
-        ctx.moveTo(a[0], a[1]);
-        ctx.lineTo(b[0], b[1]);
-        ctx.lineTo(c[0], c[1]);
-        ctx.lineTo(a[0], a[1]);
-        ctx.stroke();
-    }*/
+    
+    function compareFunc(a,b) {
+        if (a[0] > b[0]) return 1;
+        else if (a[0] == b[0]) return 0;
+        else return -1;
+    }
+    //Returns edges of MST. Might not belong here, but whatever.
+    //Not a great implementation of MST (half-hearted Prim's), but for most reasonable cases,
+    //more complex data structures required for proper implementations would likely
+    //perform worse than built in JS arrays.
+    var getMST = function() {
+        var weights = [];
+        var i;
+        var edges = getEdges();
+        for (i=0; i<edges.length; ++i) {
+            //Interpreter should inline sq func, if we care.
+            weights[i] = [(sq(points[edges[i][0]][0]-points[edges[i][1]][0]) + sq(points[edges[i][0]][1]-points[edges[i][1]][1])), i, edges[i]]
+        } 
+        weights = weights.sort(compareFunc);
+        //console.log(weights);
+        var treeEdges = new Set(); //set of edge numbers
+        var treeVerts = new Set([3]); //Pick "random" vertex
 
-    addAndDraw();
-    canvas.addEventListener("click", addAndDraw);
+        var nextVert = -1;
+        var nextEdge = -1;
+        while(treeVerts.size < (points.length - 3)) {
+            //Iterate over edges to find one with a root in treeVerts
+            for (i = 0; i < weights.length; ++i) {
+                if (treeVerts.has(weights[i][2][0]) )  {
+                    if (!treeVerts.has(weights[i][2][1])) {
+                        nextVert = weights[i][2][1];    
+                        nextEdge = weights[i][1];
+                        weights.splice(i,1);
+                        break;
+                    }
+                }
+                else if (treeVerts.has(weights[i][2][1])) {
+                    //We already know weights[i][2][0] is not in treeVerts
+                    nextVert = weights[i][2][0];    
+                    nextEdge = weights[i][1];
+                    weights.splice(i,1);
+                    break;
+                }
+            }
+            if (nextVert<0) {
+                throw "MST failure, no new vertex this loop";
+            }
+            treeEdges.add(nextEdge);
+            treeVerts.add(nextVert);
+        }
+        return treeEdges;
+    }
+
+    //Returns points, including ma, mb, mc, since I don't want to fix the indexing.
+    var getPoints = function() {
+        return points;
+    }
+
+    var addPoint = function(point) { 
+        var x = points.length; //New point id in list of triangles
+        points.push(point); //Add added point to point list
+        badTries = []; //Start with no bad triangles. Bad var name I know. Stores index of triangle in triangles to remove.
+        var j; //Index var
+        for (j=0; j<triangles.length; ++j) {
+            if (inCircumcircle(points[triangles[j][0]] , points[triangles[j][1]], points[triangles[j][2]], points[x])) {
+                badTries.push(j);
+                //get actual location from point array. If new point in the circumcircle, not Delaunay, add to bad triangles
+            }
+        }
+        var poly = [];  //"Star shaped polygon" edges, as strings of form "ei,j" where i > j for an edge Eij (aka Eji).
+        edges = {};
+        for (j=0;j<badTries.length;++j) {
+            var k;
+            for (k = 0; k<3; ++k) {
+                var a = triangles[badTries[j]][k];
+                var b = triangles[badTries[j]][(k+1)%3]; //Next node
+                var edgestr = (a>b)? "e"+a+","+b: "e"+b+","+a; //Unique and identical string for each edge, orientation independent.
+                    //Might be slow, but seems fast enough for our purposes.
+                if (edges.hasOwnProperty(edgestr)) {edges[edgestr] = -1;} //If edge in list already, invalidate
+                else {edges[edgestr] = [a,b];}  //Add verticies as value to reduce string ops slightly.
+            } 
+        }
+        var e;
+        for (e in edges) {
+            if (edges.hasOwnProperty(e) && (edges[e] !== -1)) {
+                poly.push(e); //Any edge seen only once will be part of the enclosing triangle
+            }
+        }
+        var goodTries = []; // Triangles to preserve. Of course it would be possible to avoid this step
+            // and directly remove bad triangles, but that gets complex
+        var badTriesSet = new Set(badTries);
+        for (j=0; j<triangles.length; ++j) {
+            if (!(badTriesSet.has(j))) {
+                goodTries.push(triangles[j]);
+            }
+        }
+        triangles.length = 0; //Empty triangles
+        for (j=0; j<goodTries.length; ++j) {
+            triangles.push(goodTries[j]); //Add good triangles
+        }
+        //Add the new triangles, triangulating the star shaped polygon to new point x.
+        for (j=0; j<poly.length; ++j) {
+            e = poly[j];
+            triangles.push([edges[e][0], edges[e][1], x]);
+        }
+    }
+
+    return {
+        "addPoint":addPoint, 
+        "getPoints":getPoints, 
+        "getEdges":getEdges, 
+        "getTriangulation":getTriangulation, 
+        "getFullTriangulation":getFullTriangulation, 
+        "getMST":getMST
+    };
          
 }
+
+function sq(x) {return x*x}
+
+triangulation = Triangulation([0,0],[0,500],[500,0]);
+
+var makeSnowFlake 
+
+var addAndDraw = function(ev) {
+    if (ev) {
+        if (ev.layerX + ev.layerY > 500) {triangulation.addPoint([500-ev.layerY,500-ev.layerX]);}
+        else triangulation.addPoint([ev.layerX, ev.layerY]); 
+    }
+    ctx.clearRect(0,0,canvas.width, canvas.height);
+    var edges = triangulation.getEdges();
+    var points = triangulation.getPoints();
+    var MST = triangulation.getMST();
+    var l;
+    var a,b;
+    for (l = 0; l<edges.length; ++l) {
+        if (MST.has(l)) {
+            ctx.strokeStyle="#00FF00";
+            ctx.lineWidth=2.5;
+        }
+        else {
+            ctx.strokeStyle =  "#000000";
+            ctx.lineWidth=1.0;
+        }
+        a = points[edges[l][0]];
+        b = points[edges[l][1]];
+        ctx.beginPath();
+        ctx.moveTo(a[0], a[1]);
+        ctx.lineTo(b[0], b[1]);
+        ctx.stroke();
+    }
+    ctx.lineWidth=1.0;
+    ctx.fillStyle = "#FF0000";
+    ctx.lineStyle =  "#FF0000";
+    for (l = 3; l<points.length; ++l) {
+        ctx.beginPath();
+        ctx.arc(points[l][0], points[l][1], 3, 0, 2 * Math.PI);
+        ctx.fill();
+    }
+    //console.log("edges: " + edges.length);
+    //console.log("points: " + points.length);
+}
+
+canvas.addEventListener("click", addAndDraw);
 
 function circletest() {
     var canvas = document.getElementById("dotdemo");
@@ -206,5 +287,4 @@ function circletest() {
     canvas.addEventListener("mousemove", pick);
 
 }
-triangulationTest();
 //circletest();
