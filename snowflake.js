@@ -39,12 +39,11 @@ function pointOnCircle(origin, radius) {
 function triangulationTest() {
     var canvas = document.getElementById("dotdemo");
     var ctx = canvas.getContext("2d");
-    var points = genPoint(10);
+    var points=[] ; //= genPoint(10);
     var i; 
-    var len = points.length;
-    for (i=0; i<len; ++i) {
-        if (points[i][0] > points[i][1]) {
-            points[i] = [points[i][1], points[i][0]];
+/*    for (i=0; i<len; ++i) {
+        if (points[i][0] + points[i][1] > 1) {
+            points[i] = [1 - points[i][0], 1 - points[i][1]];
         }
         points[i][0] *= 400;
         points[i][1] *= 400;
@@ -53,26 +52,30 @@ function triangulationTest() {
         points[i][0] += 50;
         points[i][1] += 50;
     } 
-
+    console.log(points);
+*/
     points.push([0,0]);
     points.push([500,0]);
     points.push([0,500]);
     var triangles = [];
-    triangles.push([len, len+1, len+2]);
-    var addPoint = function(x) { 
+    triangles.push([0, 1, 2]);
+
+    var addPoint = function(point) { 
     //    var i;
     //    for (i = 0; i<len; ++i) {
+            var x = points.length;
+            points.push(point);
             badTries = [];
             var j;
             for (j=0; j<triangles.length; ++j) {
                 if (inCircumcircle(points[triangles[j][0]] , points[triangles[j][1]], points[triangles[j][2]], points[x])) {
                     badTries.push(j);
-                    console.log("Pushed " + j + " into bad triangles");
+                    //console.log("Pushed " + j + " into bad triangles");
                 }
             }
-            console.log("bad triangles:");
-            console.log(badTries);
-            console.log(triangles);
+            //console.log("bad triangles:");
+            //console.log(badTries);
+            //console.log(triangles);
             
             var poly = []; //THIS IS WRONG. Poly is not necessarily star shaped!
             edges = {};
@@ -92,7 +95,7 @@ function triangulationTest() {
                     poly.push(e);
                 }
             }
-            console.log("Poly size: " + poly.length)
+            //console.log("Poly size: " + poly.length)
             var goodTries = [];
             var badTriesSet = new Set(badTries);
             for (j=0; j<triangles.length; ++j) {
@@ -100,34 +103,36 @@ function triangulationTest() {
                     goodTries.push(triangles[j]);
                 }
             }
-            console.log("good triangles:");
-            console.log(goodTries);
+            //console.log("good triangles:");
+            //console.log(goodTries);
             triangles.length = 0;
             for (j=0; j<goodTries.length; ++j) {
                 triangles.push(goodTries[j]);
             }
-            console.log("triangles, edges, polygons")
-            console.log(triangles);
-            console.log(edges);
-            console.log(poly);
+            //console.log("triangles, edges, polygons")
+            //console.log(triangles);
+            //console.log(edges);
+            //console.log(poly);
 
             for (j=0; j<poly.length; ++j) {
                 e = poly[j];
                 triangles.push([edges[e][0], edges[e][1], x]);
-                console.log("New triangle:");
-                console.log([edges[e][0], edges[e][1], x]);
+                ////console.log("New triangle:");
+                //console.log([edges[e][0], edges[e][1], x]);
             }
        // }
     }
-
-    var l;
-        console.log(triangles.length); 
-    for (l = 0; l<len; ++l) {
-        console.log("Adding point " + l);
-        addPoint(l);
-        console.log(triangles.length); 
-    }
-    for (l = 0; l<triangles.length; ++l) {
+    
+    var addAndDraw = function(ev) {
+        if (ev) {
+            if (ev.layerX + ev.layerY >= 500) {return;}
+            console.time("add")
+            addPoint([ev.layerX, ev.layerY]); 
+            console.timeEnd("add")
+        }
+        console.time("draw")
+        ctx.clearRect(0,0,canvas.width, canvas.height);
+        for (l = 0; l<triangles.length; ++l) {
         a = points[triangles[l][0]];
         b = points[triangles[l][1]];
         c = points[triangles[l][2]];
@@ -137,8 +142,31 @@ function triangulationTest() {
         ctx.lineTo(c[0], c[1]);
         ctx.lineTo(a[0], a[1]);
         ctx.stroke();
+        }
+        console.timeEnd("draw")
     }
 
+/*    var l;
+    for (l = 0; l<len; ++l) {
+        console.log("Adding point " + l);
+        addPoint(l);
+        console.log(triangles.length); 
+    }
+*/
+    /*for (l = 0; l<triangles.length; ++l) {
+        a = points[triangles[l][0]];
+        b = points[triangles[l][1]];
+        c = points[triangles[l][2]];
+        ctx.beginPath();
+        ctx.moveTo(a[0], a[1]);
+        ctx.lineTo(b[0], b[1]);
+        ctx.lineTo(c[0], c[1]);
+        ctx.lineTo(a[0], a[1]);
+        ctx.stroke();
+    }*/
+
+    addAndDraw();
+    canvas.addEventListener("click", addAndDraw);
          
 }
 
