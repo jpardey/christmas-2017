@@ -36,6 +36,112 @@ function pointOnCircle(origin, radius) {
     return [origin[0]+radius*Math.cos(angle), origin[1]+radius*Math.sin(angle)];
 }
 
+function triangulationTest() {
+    var canvas = document.getElementById("dotdemo");
+    var ctx = canvas.getContext("2d");
+    var points = genPoint(10);
+    var i; 
+    var len = points.length;
+    for (i=0; i<len; ++i) {
+        if (points[i][0] > points[i][1]) {
+            points[i] = [points[i][1], points[i][0]];
+        }
+        points[i][0] *= 400;
+        points[i][1] *= 400;
+        points[i][0] = Math.round(points[i][0]);
+        points[i][1] = Math.round(points[i][1]);
+        points[i][0] += 50;
+        points[i][1] += 50;
+    } 
+
+    points.push([0,0]);
+    points.push([500,0]);
+    points.push([0,500]);
+    var triangles = [];
+    triangles.push([len, len+1, len+2]);
+    var addPoint = function(x) { 
+    //    var i;
+    //    for (i = 0; i<len; ++i) {
+            badTries = [];
+            var j;
+            for (j=0; j<triangles.length; ++j) {
+                if (inCircumcircle(points[triangles[j][0]] , points[triangles[j][1]], points[triangles[j][2]], points[x])) {
+                    badTries.push(j);
+                    console.log("Pushed " + j + " into bad triangles");
+                }
+            }
+            console.log("bad triangles:");
+            console.log(badTries);
+            console.log(triangles);
+            
+            var poly = []; //THIS IS WRONG. Poly is not necessarily star shaped!
+            edges = {};
+            for (j=0;j<badTries.length;++j) {
+                var k;
+                for (k = 0; k<3; ++k) {
+                    var a = triangles[badTries[j]][k];
+                    var b = triangles[badTries[j]][(k+1)%3];
+                    var edgestr = (a>b)? "e"+a+","+b: "e"+b+","+a;
+                    if (edges.hasOwnProperty(edgestr)) {edges[edgestr] = -1;}
+                    else {edges[edgestr] = [a,b];}
+                } 
+            }
+            var e;
+            for (e in edges) {
+                if (edges.hasOwnProperty(e) && (edges[e] !== -1)) {
+                    poly.push(e);
+                }
+            }
+            console.log("Poly size: " + poly.length)
+            var goodTries = [];
+            var badTriesSet = new Set(badTries);
+            for (j=0; j<triangles.length; ++j) {
+                if (!(badTriesSet.has(j))) {
+                    goodTries.push(triangles[j]);
+                }
+            }
+            console.log("good triangles:");
+            console.log(goodTries);
+            triangles.length = 0;
+            for (j=0; j<goodTries.length; ++j) {
+                triangles.push(goodTries[j]);
+            }
+            console.log("triangles, edges, polygons")
+            console.log(triangles);
+            console.log(edges);
+            console.log(poly);
+
+            for (j=0; j<poly.length; ++j) {
+                e = poly[j];
+                triangles.push([edges[e][0], edges[e][1], x]);
+                console.log("New triangle:");
+                console.log([edges[e][0], edges[e][1], x]);
+            }
+       // }
+    }
+
+    var l;
+        console.log(triangles.length); 
+    for (l = 0; l<len; ++l) {
+        console.log("Adding point " + l);
+        addPoint(l);
+        console.log(triangles.length); 
+    }
+    for (l = 0; l<triangles.length; ++l) {
+        a = points[triangles[l][0]];
+        b = points[triangles[l][1]];
+        c = points[triangles[l][2]];
+        ctx.beginPath();
+        ctx.moveTo(a[0], a[1]);
+        ctx.lineTo(b[0], b[1]);
+        ctx.lineTo(c[0], c[1]);
+        ctx.lineTo(a[0], a[1]);
+        ctx.stroke();
+    }
+
+         
+}
+
 function circletest() {
     var canvas = document.getElementById("dotdemo");
     var ctx = canvas.getContext("2d");
@@ -72,4 +178,5 @@ function circletest() {
     canvas.addEventListener("mousemove", pick);
 
 }
-circletest();
+triangulationTest();
+//circletest();
