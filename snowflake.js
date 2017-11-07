@@ -12,6 +12,7 @@ function genPoint(n){
     return li;
 }
 
+
 //is point d in circumcircle defined by a, b, c?
 function inCircumcircle(a, b, c, d) {
     var abx = b[0] - a[0]; 
@@ -89,13 +90,15 @@ function Triangulation(ma, mb, mc) {
     
     function compareFunc(a,b) {
         if (a[0] > b[0]) return 1;
-        else if (a[0] == b[0]) return 0;
+        else if (a[0] === b[0]) return 0;
         else return -1;
     }
     //Returns edges of MST. Might not belong here, but whatever.
     //Not a great implementation of MST (half-hearted Prim's), but for most reasonable cases,
     //more complex data structures required for proper implementations would likely
     //perform worse than built in JS arrays.
+
+    //WARNING: Might not generate a full tree if identical points added.
     var getMST = function() {
         var weights = [];
         var i;
@@ -104,8 +107,9 @@ function Triangulation(ma, mb, mc) {
             //Interpreter should inline sq func, if we care.
             weights[i] = [(sq(points[edges[i][0]][0]-points[edges[i][1]][0]) + sq(points[edges[i][0]][1]-points[edges[i][1]][1])), i, edges[i]]
         } 
-        weights = weights.sort(compareFunc);
-        //console.log(weights);
+        weights.sort(compareFunc);
+        console.log(weights);
+        console.log(edges);
         var treeEdges = new Set(); //set of edge numbers
         var treeVerts = new Set([3]); //Pick "random" vertex
 
@@ -130,8 +134,12 @@ function Triangulation(ma, mb, mc) {
                     break;
                 }
             }
-            if (nextVert<0) {
-                throw "MST failure, no new vertex this loop";
+            if (nextVert<0 || treeVerts.has(nextVert)) {
+                //Technically this is an error, I believe in triangulation and
+                //edges. However, if true trees aren't critical, this won't hurt.
+                //However, it seems to work fine
+                //console.log("MST warning: Could not find next point.");
+                break;
             }
             treeEdges.add(nextEdge);
             treeVerts.add(nextVert);
@@ -143,7 +151,9 @@ function Triangulation(ma, mb, mc) {
     var getPoints = function() {
         return points;
     }
+    //Add points to the actual triangulation
 
+    //WARNING: Overlapping points may not be added properly.
     var addPoint = function(point) { 
         var x = points.length; //New point id in list of triangles
         points.push(point); //Add added point to point list
@@ -208,8 +218,6 @@ function sq(x) {return x*x}
 
 triangulation = Triangulation([0,0],[0,500],[500,0]);
 
-var makeSnowFlake 
-
 var addAndDraw = function(ev) {
     if (ev) {
         if (ev.layerX + ev.layerY > 500) {triangulation.addPoint([500-ev.layerY,500-ev.layerX]);}
@@ -249,7 +257,38 @@ var addAndDraw = function(ev) {
     //console.log("points: " + points.length);
 }
 
+var theta = 2*Math.PI/12;
+var sliceSin = Math.sin(theta);
+var sliceCos = Math.cos(theta);
+var sliceTan = Math.tan(theta);
+var upperSlope = (1-sliceCos)/sliceSin;
+function genSnowflakePoints(n, factor) {
+    var li = [];
+    var i;
+    var p;
+     
+    for (i = 0; i<n; ++i) {
+        do {
+            p = [Math.random(), Math.random()];
+            if (p[0] + p[1] > 1) {p = [1-p[0], 1-p[1]];}
+            p = [p[0]*sliceTan, p[1]];
+        } while ((p[0] > sliceSin) || p[1]<upperSlope*p[0]);
+        p = [Math.round(p[0]*factor), Math.round(p[1]*factor)];
+        li.push(p);
+    //    triangulation.addPoint(p);
+    //    addAndDraw();
+    }
+    return li;
+}
+
 canvas.addEventListener("click", addAndDraw);
+
+var li = genSnowflakePoints(500, 500);
+var i;
+for (i = 0; i<li.length;++i) {
+    triangulation.addPoint(li[i]);
+}
+addAndDraw();
 
 function circletest() {
     var canvas = document.getElementById("dotdemo");
