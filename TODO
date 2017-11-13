@@ -1,6 +1,6 @@
 Add pixi.js support.
 Render to textures.
-How does rotation look when using textures?
+How does rotation look when using textures? Downscale how much?
 Background scene
 Background snow piles buildup or static?
 Background lights
@@ -9,3 +9,6 @@ Background sprites:
     Birds
     Deer
     Cat
+Smoke from house chimney!!!
+Maybe a paper cutout asthetic? Heavy borders around most things? How will
+    that work with smoke? Convex hull? Blobs that grow out?

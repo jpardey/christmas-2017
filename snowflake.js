@@ -290,9 +290,9 @@ var testDraw = function(t, edgeList, offset_x, offset_y, size) {
     var e;
     for (pass = 0; pass<2; ++pass) {
         if (!pass) {
-            ctx.lineWidth = size/32;
-            ctx.strokeStyle = "#BBBBBB";
-            ctx.fillStyle = "#BBBBBB";
+            ctx.lineWidth = size/8;
+            ctx.strokeStyle = "#AAAAAA";
+            ctx.fillStyle = "#AAAAAA";
         }
         else {
             ctx.lineWidth = size/64;
@@ -469,7 +469,7 @@ var animLoop = function() {
         var newFlakeEdges = pickFlakeEdges(newFlake);
         for (i=0; i<5; ++i) {
             if (!flakes[i]) {
-                flakes[i] = [newFlake, newFlakeEdges, Math.random()*512, -100, Math.random()+0.5];
+                flakes[i] = [newFlake, newFlakeEdges, Math.random()*1024, -100, Math.random()+0.5, Math.random()];
                 flakeCount++;
                 break;
             }
@@ -498,10 +498,10 @@ var animLoop = function() {
             }
             testDraw(flakes[i][0], flakes[i][1], flakes[i][2], flakes[i][3], size);
 
-            flakes[i][2] += (Math.random()-0.5)*size/128;
+            flakes[i][2] += (Math.random()-flakes[i][5])*size/128;
             flakes[i][3] += size/128*flakes[i][4];
 
-            if (flakes[i][2] < -size - 50 || flakes[i][2] >512 + size + 50 || flakes[i][3] > 512 + size) {
+            if (flakes[i][2] < -size - 50 || flakes[i][2] >1024 + size + 50 || flakes[i][3] > 512 + size) {
                 flakes[i] = null;
                 flakeCount--;
             }
