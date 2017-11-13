@@ -269,8 +269,8 @@ function sq(x) {return x*x}
 triangulation = Triangulation([-2000,-2000],[-2000,15000],[15000,-2000]);
 
 //Take a triangulation and draw it
-var testDraw = function(t) {
-    ctx.clearRect(0,0,canvas.width, canvas.height);
+var testDraw = function(t, edgeList, offset_x, offset_y, size) {
+    //ctx.clearRect(0,0,canvas.width, canvas.height);
     var edges = t.getEdges();
     var points = t.getPoints();
     var mirrored = getMirrored30(points);
@@ -279,45 +279,49 @@ var testDraw = function(t) {
     allPoints.push(points);
     allPoints.push(mirrored);
     var i;
-    for (i = 2; i < 6; ++i) {
+    for (i = 2; i < 12; ++i) {
         allPoints.push(getRotated60(allPoints[i-2]));
     }
 
-    var MST = t.getMST();
-    var extraEdgeList = pickFlakeEdges(t);
-    console.log(extraEdgeList);
-    var extraEdges = new Set(extraEdgeList);
+    //var edgeSet = new Set(edgeList);
     var l;
     var a,b;
-    for (l = 0; l<edges.length; ++l) {
-        if (MST.has(l)) {
-            ctx.strokeStyle="#00FF00";
-            ctx.lineWidth=2.5;
-        }
-        else if (extraEdges.has(l)) {
-            ctx.strokeStyle = "#DD00DD" 
-            ctx.lineWidth=2.5;
+    var pass;
+    var e;
+    for (pass = 0; pass<2; ++pass) {
+        if (!pass) {
+            ctx.lineWidth = size/32;
+            ctx.strokeStyle = "#BBBBBB";
+            ctx.fillStyle = "#BBBBBB";
         }
         else {
-            ctx.strokeStyle =  "#CCCCCC";
-            ctx.lineWidth=1.0;
+            ctx.lineWidth = size/64;
+            ctx.strokeStyle = "#222277";
+            ctx.fillStyle = "#222277";
         }
-        for(i=0;i<6;++i) {
-            a = allPoints[i][edges[l][0]];
-            b = allPoints[i][edges[l][1]];
-            ctx.beginPath();
-            ctx.moveTo(a[0]*250 + 500, a[1]*250 + 500);
-            ctx.lineTo(b[0]*250 + 500, b[1]*250 + 500);
-            ctx.stroke();
+
+
+        //Draw circle at each point
+        for (i = 0; i<12; ++i) {
+            var drawPoints = allPoints[i];
+            for (l = 3; l<drawPoints.length; ++l) {
+                ctx.beginPath();
+                ctx.arc(drawPoints[l][0]*size + offset_x, drawPoints[l][1]*size + offset_y, ctx.lineWidth/2, 0, 2 * Math.PI);
+                ctx.fill();
+            }
         }
-    }
-    ctx.lineWidth=1.0;
-    ctx.fillStyle = "#FF0000";
-    ctx.lineStyle =  "#FF0000";
-    for (l = 3; l<points.length; ++l) {
-        ctx.beginPath();
-        ctx.arc(points[l][0], points[l][1], 3, 0, 2 * Math.PI);
-        ctx.fill();
+
+        for (l = 0; l<edgeList.length; ++l) {
+            for(i=0;i<12;++i) {
+                e = edgeList[l];
+                a = allPoints[i][edges[e][0]];
+                b = allPoints[i][edges[e][1]];
+                ctx.beginPath();
+                ctx.moveTo(a[0]*size + offset_x, a[1]*size + offset_y);
+                ctx.lineTo(b[0]*size + offset_x, b[1]*size + offset_y);
+                ctx.stroke();
+            }
+        }
     }
 
 }
@@ -327,7 +331,6 @@ var addAndDraw = function(ev) {
         if (ev.layerX + ev.layerY > 500) {triangulation.addPoint([500-ev.layerY,500-ev.layerX]);}
         else triangulation.addPoint([ev.layerX, ev.layerY]); 
     }
-    ctx.clearRect(0,0,canvas.width, canvas.height);
     var edges = triangulation.getFullEdges();
     var points = triangulation.getPoints();
     var MST = triangulation.getMST();
@@ -357,38 +360,6 @@ var addAndDraw = function(ev) {
         ctx.arc(points[l][0], points[l][1], 3, 0, 2 * Math.PI);
         ctx.fill();
     }
-    //TESTING remove
-    var leftmost = 3;
-    var rightmost = 3;
-    var innermost = 3;
-    var rightmostDist = sliceCos*points[3][0] + sliceSin*points[3][1];
-    for (i=4; i<points.length; ++i ) {
-        if (points[i][0] < points[leftmost][0]) {
-            leftmost = i;
-        }
-        //Lazy. Whatever.
-        if (points[i][1] > points[innermost][1]) {
-            innermost = i;
-        }
-        var dist = points[i][0]*sliceCos + points[i][1]*sliceSin;
-        if (dist > rightmostDist) {
-            rightmost = i;
-            rightmostDist = dist;
-        }
-    }
-    ctx.fillStyle = "#0000FF";
-    ctx.lineStyle =  "#0000FF";
-        ctx.beginPath();
-        ctx.arc(points[rightmost][0], points[rightmost][1], 5, 0, 2 * Math.PI);
-        ctx.fill();
-        ctx.beginPath();
-        ctx.arc(points[leftmost][0], points[leftmost][1], 5, 0, 2 * Math.PI);
-        ctx.fill();
-        ctx.beginPath();
-        ctx.arc(points[innermost][0], points[innermost][1], 5, 0, 2 * Math.PI);
-        ctx.fill();
-    //console.log("edges: " + edges.length);
-    //console.log("points: " + points.length);
 }
 
 var theta = 2*Math.PI/12;
@@ -416,16 +387,16 @@ var genSnowflakePoints = function(n,center,right,left) {
     }
 
     if (center) {
-        li.push([1,1]);
+        li.push([0,0]);
     }
 
     if (left) {
-        li.push([0,Math.random()]);
+        li.push([0,Math.random()*0.7+0.3]);
     }
 
     if (right) {
-        var y = /*(1-sliceCos)+*/sliceCos*Math.random();
-        li.push([Math.round((y)*sliceTan),Math.round(y)])
+        var y = Math.random()*0.7+0.3;
+        li.push([sliceSin*y,sliceCos*y]);
     }
 
 
@@ -440,20 +411,21 @@ var genSnowflakeMesh = function() {
     //First, pick a number of points between 5 and 10
     var n = 5+Math.floor(Math.random()*6);
     //Make that many points. Render it as a 512 x 512 (Later. Set factor to 256 for that. Might be a bit wider or narrower too?) 
-    var s = Math.floor(Math.random()*4)
-    var cen_p = 1, lef_p = 1, rig_p = 1;
+    var s = Math.floor(Math.random()*4);
+    var center_p = 1;
+    var left_p = 1;
+    var right_p = 1;
     switch (s){
-        case 1: cen_p = 0; break;
-        case 2: lef_p = 0; break;
-        case 3: rig_p = 0; break;
+        case 1: center_p = 0; break;
+        case 2: left_p = 0; break;
+        case 3: right_p = 0; break;
             
     }
 
-    var points = genSnowflakePoints(n,cen_p,rig_p,lef_p);
+    var points = genSnowflakePoints(n,center_p,right_p,left_p);
     var i;
 
-    //var t = Triangulation([0,0], [500,0], [0,500]);
-    var t = triangulation;
+    var t = Triangulation([-10,-10], [-10,10], [20,0]);
 
     t.addPoints(points); 
     
@@ -462,18 +434,17 @@ var genSnowflakeMesh = function() {
 }
 
 var pickFlakeEdges = function(t) {
-    var extraEdges = [];
-    var chosenEdges = [];
-
     var allEdges = t.getEdges(); //Returns an array
     var mstEdges = t.getMST(); //Returns a set. Inconsistent, but it works here.
+
+    var chosenEdges = Array.from(mstEdges); //Start with mst
+    var extraEdges = []
     var i;
     for (i=0; i<allEdges.length; ++i) {
         if (!mstEdges.has(i)){
             extraEdges.push(i);
         }
     }
-    console.log(extraEdges);
     var n = extraEdges.length;
     for (i = 0; i<n; ++i) {
         //Pick approx 10% of edges not in MST
@@ -483,7 +454,69 @@ var pickFlakeEdges = function(t) {
     return chosenEdges;
 }
 
-testDraw(genSnowflakeMesh());
+
+var lastFlake = -100;
+var now = 0;
+var flakes = [];
+var flakeCount = 0;
+var animLoop = function() {
+    ctx.clearRect(0,0,canvas.width, canvas.height);
+    now++; 
+    var i;
+    if ((flakeCount < 5) && (lastFlake + 90 < now)){
+        lastFlake = now; 
+        var newFlake = genSnowflakeMesh();
+        var newFlakeEdges = pickFlakeEdges(newFlake);
+        for (i=0; i<5; ++i) {
+            if (!flakes[i]) {
+                flakes[i] = [newFlake, newFlakeEdges, Math.random()*512, -100, Math.random()+0.5];
+                flakeCount++;
+                break;
+            }
+        }
+    }
+
+    for (i=0; i<5; ++i) {
+        var size;
+        if (flakes[i]) {
+            switch (i) {
+                case 0:
+                    size = 60;
+                    break;
+                case 1:
+                    size = 64;
+                    break;
+                case 2:
+                    size = 80;
+                    break;
+                case 3:
+                    size = 90;
+                    break;
+                case 4:
+                    size = 100;
+                    break;
+            }
+            testDraw(flakes[i][0], flakes[i][1], flakes[i][2], flakes[i][3], size);
+
+            flakes[i][2] += (Math.random()-0.5)*size/128;
+            flakes[i][3] += size/128*flakes[i][4];
+
+            if (flakes[i][2] < -size - 50 || flakes[i][2] >512 + size + 50 || flakes[i][3] > 512 + size) {
+                flakes[i] = null;
+                flakeCount--;
+            }
+        }
+    }
+
+
+
+
+    requestAnimationFrame(animLoop);
+}
+
+animLoop();
+
+//testDraw(genSnowflakeMesh());
 
 //canvas.addEventListener("click", addAndDraw);
 /*
