@@ -266,102 +266,6 @@ function Triangulation(ma, mb, mc) {
 
 function sq(x) {return x*x}
 
-triangulation = Triangulation([-2000,-2000],[-2000,15000],[15000,-2000]);
-
-//Take a triangulation and draw it
-var testDraw = function(t, edgeList, offset_x, offset_y, size) {
-    //ctx.clearRect(0,0,canvas.width, canvas.height);
-    var edges = t.getEdges();
-    var points = t.getPoints();
-    var mirrored = getMirrored30(points);
-
-    var allPoints = [];
-    allPoints.push(points);
-    allPoints.push(mirrored);
-    var i;
-    for (i = 2; i < 12; ++i) {
-        allPoints.push(getRotated60(allPoints[i-2]));
-    }
-
-    //var edgeSet = new Set(edgeList);
-    var l;
-    var a,b;
-    var pass;
-    var e;
-    for (pass = 0; pass<2; ++pass) {
-        if (!pass) {
-            ctx.lineWidth = size/8;
-            ctx.strokeStyle = "#AAAAAA";
-            ctx.fillStyle = "#AAAAAA";
-        }
-        else {
-            ctx.lineWidth = size/64;
-            ctx.strokeStyle = "#222277";
-            ctx.fillStyle = "#222277";
-        }
-
-
-        //Draw circle at each point
-        for (i = 0; i<12; ++i) {
-            var drawPoints = allPoints[i];
-            for (l = 3; l<drawPoints.length; ++l) {
-                ctx.beginPath();
-                ctx.arc(drawPoints[l][0]*size + offset_x, drawPoints[l][1]*size + offset_y, ctx.lineWidth/2, 0, 2 * Math.PI);
-                ctx.fill();
-            }
-        }
-
-        for (l = 0; l<edgeList.length; ++l) {
-            for(i=0;i<12;++i) {
-                e = edgeList[l];
-                a = allPoints[i][edges[e][0]];
-                b = allPoints[i][edges[e][1]];
-                ctx.beginPath();
-                ctx.moveTo(a[0]*size + offset_x, a[1]*size + offset_y);
-                ctx.lineTo(b[0]*size + offset_x, b[1]*size + offset_y);
-                ctx.stroke();
-            }
-        }
-    }
-
-}
-
-var addAndDraw = function(ev) {
-    if (ev) {
-        if (ev.layerX + ev.layerY > 500) {triangulation.addPoint([500-ev.layerY,500-ev.layerX]);}
-        else triangulation.addPoint([ev.layerX, ev.layerY]); 
-    }
-    var edges = triangulation.getFullEdges();
-    var points = triangulation.getPoints();
-    var MST = triangulation.getMST();
-    var l;
-    var a,b;
-    for (l = 0; l<edges.length; ++l) {
-        if (MST.has(l)) {
-            ctx.strokeStyle="#00FF00";
-            ctx.lineWidth=2.5;
-        }
-        else {
-            ctx.strokeStyle =  "#000000";
-            ctx.lineWidth=1.0;
-        }
-        a = points[edges[l][0]];
-        b = points[edges[l][1]];
-        ctx.beginPath();
-        ctx.moveTo(a[0], a[1]);
-        ctx.lineTo(b[0], b[1]);
-        ctx.stroke();
-    }
-    ctx.lineWidth=1.0;
-    ctx.fillStyle = "#FF0000";
-    ctx.lineStyle =  "#FF0000";
-    for (l = 3; l<points.length; ++l) {
-        ctx.beginPath();
-        ctx.arc(points[l][0], points[l][1], 3, 0, 2 * Math.PI);
-        ctx.fill();
-    }
-}
-
 var theta = 2*Math.PI/12;
 var sliceSin = Math.sin(theta);
 var sliceCos = Math.cos(theta);
@@ -399,26 +303,25 @@ var genSnowflakePoints = function(n,center,right,left) {
         li.push([sliceSin*y,sliceCos*y]);
     }
 
-
-    
-
     return li;
 }
 
-//Inputs: nothing
-//Outputs: triangulation object (TODO: Should it be global, or generated, or optionally passed in?)
 var genSnowflakeMesh = function() {
     //First, pick a number of points between 5 and 10
     var n = 5+Math.floor(Math.random()*6);
     //Make that many points. Render it as a 512 x 512 (Later. Set factor to 256 for that. Might be a bit wider or narrower too?) 
-    var s = Math.floor(Math.random()*4);
+    var s = Math.floor(Math.random()*9);
     var center_p = 1;
     var left_p = 1;
     var right_p = 1;
     switch (s){
-        case 1: center_p = 0; break;
-        case 2: left_p = 0; break;
-        case 3: right_p = 0; break;
+        case 2:
+        case 3: center_p = 0; break;
+        case 4:
+        case 5: left_p = 0; break;
+        case 6: left_p = 0; //fallthrough
+        case 7:
+        case 8: right_p = 0; break;
             
     }
 
@@ -454,6 +357,93 @@ var pickFlakeEdges = function(t) {
     return chosenEdges;
 }
 
+//Draw a snowflake on a new canvas, creating a snowflake/canvas object
+var newCanvasDraw = function(fullSize) {
+    //Now would be the time to generate a random seed, if the generator is replaced
+    //TODO: transform this to have the mesh gen and translations etc in a webworker if possible.
+    //Only draw in the main thread.
+    var t = genSnowflakeMesh();
+    var edgeList = pickFlakeEdges(t);
+    var edges = t.getEdges();
+    var points = t.getPoints();
+    var mirrored = getMirrored30(points);
+
+    var allPoints = [];
+    var size = fullSize - fullSize/16;
+    var offset = fullSize/2 ; 
+    allPoints.push(points);
+    allPoints.push(mirrored);
+    var i;
+    for (i = 2; i < 12; ++i) {
+        allPoints.push(getRotated60(allPoints[i-2]));
+    }
+
+    //var edgeSet = new Set(edgeList);
+    var l;
+    var a,b;
+    var pass;
+    var e;
+    var canv = document.createElement('canvas');
+    canv.width = fullSize; 
+    canv.height = fullSize;
+    var ctx = canv.getContext('2d');
+    for (pass = 0; pass<2; ++pass) {
+        if (!pass) {
+            ctx.lineWidth = size/16;
+            ctx.strokeStyle = "#AAAAAA";
+            ctx.fillStyle = "#AAAAAA";
+        }
+        else {
+            ctx.lineWidth = size/64;
+            ctx.strokeStyle = "#7777BB";
+            ctx.fillStyle = "#7777BB";
+        }
+
+
+        //Draw circle at each point
+        for (i = 0; i<12; ++i) {
+            var drawPoints = allPoints[i];
+            for (l = 3; l<drawPoints.length; ++l) {
+                ctx.beginPath();
+                ctx.arc(drawPoints[l][0]*size/2 + offset, drawPoints[l][1]*size/2 + offset, ctx.lineWidth/2, 0, 2 * Math.PI);
+                ctx.fill();
+            }
+        }
+
+        ctx.beginPath();
+        for (l = 0; l<edgeList.length; ++l) {
+            for(i=0;i<12;++i) {
+                e = edgeList[l];
+                a = allPoints[i][edges[e][0]];
+                b = allPoints[i][edges[e][1]];
+                ctx.moveTo(a[0]*size/2 + offset, a[1]*size/2 + offset);
+                ctx.lineTo(b[0]*size/2 + offset, b[1]*size/2 + offset);
+            }
+        }
+        ctx.stroke();
+    }
+
+    return {"canvas":canv};
+
+}
+
+function copyToOnScreen(oCanvas, x, y) {
+    var c = canvas.getContext('2d');
+    c.drawImage(oCanvas, x, y);
+}
+
+testDrawOffscreen = function() {
+   flakes2 = [];
+   flakes2[0] = newCanvasDraw(300); 
+   copyToOnScreen(flakes2[0].canvas, 0, 0);
+   flakes2[1] = newCanvasDraw(150); 
+   copyToOnScreen(flakes2[1].canvas, 300, 150);
+   flakes2[2] = newCanvasDraw(64); 
+   copyToOnScreen(flakes2[2].canvas, 170, 300);
+}
+
+//testDrawOffscreen();
+
 
 var lastFlake = -100;
 var now = 0;
@@ -465,11 +455,28 @@ var animLoop = function() {
     var i;
     if ((flakeCount < 5) && (lastFlake + 90 < now)){
         lastFlake = now; 
-        var newFlake = genSnowflakeMesh();
-        var newFlakeEdges = pickFlakeEdges(newFlake);
+        var size;
         for (i=0; i<5; ++i) {
             if (!flakes[i]) {
-                flakes[i] = [newFlake, newFlakeEdges, Math.random()*1024, -100, Math.random()+0.5, Math.random()];
+                switch (i) {
+                    case 0:
+                        size = 100;
+                        break;
+                    case 1:
+                        size = 128;
+                        break;
+                    case 2:
+                        size = 170;
+                        break;
+                    case 3:
+                        size = 224;
+                        break;
+                    case 4:
+                        size = 256;
+                        break;
+                }
+                var newFlake = newCanvasDraw(size);
+                flakes[i] = [newFlake, newFlake.canvas.width, Math.random()*1024, -newFlake.canvas.width, Math.random()+0.5, Math.random()];
                 flakeCount++;
                 break;
             }
@@ -477,40 +484,18 @@ var animLoop = function() {
     }
 
     for (i=0; i<5; ++i) {
-        var size;
         if (flakes[i]) {
-            switch (i) {
-                case 0:
-                    size = 60;
-                    break;
-                case 1:
-                    size = 64;
-                    break;
-                case 2:
-                    size = 80;
-                    break;
-                case 3:
-                    size = 90;
-                    break;
-                case 4:
-                    size = 100;
-                    break;
-            }
-            testDraw(flakes[i][0], flakes[i][1], flakes[i][2], flakes[i][3], size);
+            copyToOnScreen(flakes[i][0].canvas, flakes[i][2], flakes[i][3]);
 
-            flakes[i][2] += (Math.random()-flakes[i][5])*size/128;
-            flakes[i][3] += size/128*flakes[i][4];
+            flakes[i][2] += (Math.random()-flakes[i][5])*flakes[i][1]/256;
+            flakes[i][3] += flakes[i][1]/128*flakes[i][4];
 
-            if (flakes[i][2] < -size - 50 || flakes[i][2] >1024 + size + 50 || flakes[i][3] > 512 + size) {
+            if (flakes[i][2] < -flakes[i][1] || flakes[i][2] >1024 + flakes[i][1] || flakes[i][3] > 512 + flakes[i][1]) {
                 flakes[i] = null;
                 flakeCount--;
             }
         }
     }
-
-
-
-
     requestAnimationFrame(animLoop);
 }
 
@@ -519,48 +504,3 @@ animLoop();
 //testDraw(genSnowflakeMesh());
 
 //canvas.addEventListener("click", addAndDraw);
-/*
-var li = genSnowflakePoints(500, 500);
-var i;
-for (i = 0; i<li.length;++i) {
-    triangulation.addPoint(li[i]);
-}
-addAndDraw();
-*/
-function circletest() {
-    var canvas = document.getElementById("dotdemo");
-    var ctx = canvas.getContext("2d");
-    var origin = [canvas.width*.5 + canvas.width*.25*Math.random(),canvas.height/2 +canvas.height*.25*Math.random()];
-    var radius = Math.min(canvas.height, canvas.width)/8*(1+Math.random());
-    //ctx.beginPath();
-    //ctx.arc(origin[0], origin[1], radius, 0, 2*Math.PI);
-    //ctx.stroke();
-    var i; 
-    var points = [];
-    var indicator = document.getElementById("indicator");
-    for (i=0; i<3; ++i) {
-        points.push(pointOnCircle(origin, radius));
-        ctx.beginPath();
-        ctx.fillRect(points[i][0] - 2, points[i][1] - 2, 4, 4 );
-        ctx.stroke();
-    }
-
-    function pick(ev){
-        var d = [ev.layerX, ev.layerY];
-        if (inCircumcircle(points[0], points[1], points[2], d)){
-            ctx.fillStyle = "#00FF00";
-            ctx.strokeStyle = "#00FF00";
-        }
-        else {
-            ctx.fillStyle = "#FF0000";
-            ctx.strokeStyle = "#FF0000";
-        }
-            ctx.beginPath();
-            ctx.fillRect(d[0]-2, d[1]-2, 4, 4);
-            ctx.stroke();
-    }
-
-    canvas.addEventListener("mousemove", pick);
-
-}
-//circletest();

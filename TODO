@@ -1,4 +1,5 @@
 Add pixi.js support.
+Set up generation code to work in WebWorker, while rendering in main thread.
 Render to textures.
 How does rotation look when using textures? Downscale how much?
 Background scene
