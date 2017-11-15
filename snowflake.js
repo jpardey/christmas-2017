@@ -509,27 +509,8 @@ function spriteFromCanvas(c) {
     return new PIXI.Sprite(PIXI.Texture.fromCanvas(c));
 }
 
-flakeSprites = [];
-var testDrawPIXI = function() {
-    var newFlake;
-    newFlake = newCanvasDraw(300); 
-    flakeSprites.push(spriteFromCanvas(newFlake.canvas));
-    newFlake = newCanvasDraw(150); 
-    flakeSprites.push(spriteFromCanvas(newFlake.canvas));
-    newFlake = newCanvasDraw(64); 
-    flakeSprites.push(spriteFromCanvas(newFlake.canvas));
-    flakeSprites[1].x=300;
-    flakeSprites[1].y=0;
-    flakeSprites[2].x=0;
-    flakeSprites[2].y=300;
-    stage.addChild(flakeSprites[0]);
-    stage.addChild(flakeSprites[1]);
-    stage.addChild(flakeSprites[2]);
-    renderer.render(stage)
-}
 
-//testDrawPIXI();
-
+var canvases = 
 
 var pixiAnimLoop = (function() {
     var lastFlake = -100;
@@ -563,9 +544,6 @@ var pixiAnimLoop = (function() {
                     }
                     var newFlake = newCanvasDraw(size);
                     var newSprite = spriteFromCanvas(newFlake.canvas);
-                   // newSprite.texture.update();
-                    // newSprite.width = size;
-                    // newSprite.height = size;
                     newSprite.x = Math.random()*1024;
                     newSprite.y = -newFlake.canvas.height/2;
                     newSprite.rotation = 2*Math.PI*Math.random();
@@ -603,11 +581,10 @@ var pixiAnimLoop = (function() {
         }
 
         renderer.render(stage);
-        requestAnimationFrame(pixiAnimLoop);
     }
 })();
 
-pixiAnimLoop();
+PIXI.ticker.shared.add(pixiAnimLoop);
 //animLoop();
 
 
