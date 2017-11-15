@@ -63,8 +63,8 @@ function pointOnCircle(origin, radius) {
     return [origin[0]+radius*Math.cos(angle), origin[1]+radius*Math.sin(angle)];
 }
 
-var canvas = document.getElementById("dotdemo");
-var ctx = canvas.getContext("2d");
+//var canvas = document.getElementById("dotdemo");
+//var ctx = canvas.getContext("2d");
 
 function Triangulation(ma, mb, mc) {
     var points=[] ; 
@@ -432,6 +432,7 @@ function copyToOnScreen(oCanvas, x, y) {
     c.drawImage(oCanvas, x, y);
 }
 
+
 testDrawOffscreen = function() {
    flakes2 = [];
    flakes2[0] = newCanvasDraw(300); 
@@ -444,12 +445,12 @@ testDrawOffscreen = function() {
 
 //testDrawOffscreen();
 
-
+/*
 var lastFlake = -100;
 var now = 0;
 var flakes = [];
 var flakeCount = 0;
-var animLoop = function() {
+var canvasAnimLoop = function() {
     ctx.clearRect(0,0,canvas.width, canvas.height);
     now++; 
     var i;
@@ -496,10 +497,119 @@ var animLoop = function() {
             }
         }
     }
-    requestAnimationFrame(animLoop);
+    requestAnimationFrame(canvasAnimLoop);
+}
+*/
+//PIXI.GC_MODES.DEFAULT = PIXI.GC_MODES.AUTO;
+var renderer = PIXI.autoDetectRenderer(1024,512);
+document.getElementById("graphicsSpace").appendChild(renderer.view);
+var stage = new PIXI.Container();
+
+function spriteFromCanvas(c) {
+    return new PIXI.Sprite(PIXI.Texture.fromCanvas(c));
 }
 
-animLoop();
+flakeSprites = [];
+var testDrawPIXI = function() {
+    var newFlake;
+    newFlake = newCanvasDraw(300); 
+    flakeSprites.push(spriteFromCanvas(newFlake.canvas));
+    newFlake = newCanvasDraw(150); 
+    flakeSprites.push(spriteFromCanvas(newFlake.canvas));
+    newFlake = newCanvasDraw(64); 
+    flakeSprites.push(spriteFromCanvas(newFlake.canvas));
+    flakeSprites[1].x=300;
+    flakeSprites[1].y=0;
+    flakeSprites[2].x=0;
+    flakeSprites[2].y=300;
+    stage.addChild(flakeSprites[0]);
+    stage.addChild(flakeSprites[1]);
+    stage.addChild(flakeSprites[2]);
+    renderer.render(stage)
+}
+
+//testDrawPIXI();
+
+
+var pixiAnimLoop = (function() {
+    var lastFlake = -100;
+    var now = 0;
+    var flakes = [null,null,null,null,null];
+    var flakeCount = 0;
+    return function() {
+        now++; 
+        var i;
+        if ((flakeCount < 5) && (lastFlake + 90 < now)){
+            lastFlake = now; 
+            var size;
+            for (i=0; i<5; ++i) {
+                if (!flakes[i]) {
+                    switch (i) {
+                        case 0:
+                            size = 100;
+                            break;
+                        case 1:
+                            size = 128;
+                            break;
+                        case 2:
+                            size = 170;
+                            break;
+                        case 3:
+                            size = 224;
+                            break;
+                        case 4:
+                            size = 256;
+                            break;
+                    }
+                    var newFlake = newCanvasDraw(size);
+                    var newSprite = spriteFromCanvas(newFlake.canvas);
+                   // newSprite.texture.update();
+                    // newSprite.width = size;
+                    // newSprite.height = size;
+                    newSprite.x = Math.random()*1024;
+                    newSprite.y = -newFlake.canvas.height/2;
+                    newSprite.rotation = 2*Math.PI*Math.random();
+                    newSprite.dTheta = (Math.random()-.5)/80;
+                    newSprite.anchor.set(0.5, 0.5);
+                    newSprite.fallSpeed = Math.random()+0.5;
+                    newSprite.windBias = Math.random();
+                    stage.addChild(newSprite);
+
+                    flakes[i] = newSprite;
+                    flakeCount++;
+                    break;
+                }
+            }
+        }
+
+        for (i=0; i<5; ++i) {
+            if (flakes[i]) {
+
+                flakes[i].x += (Math.random()-flakes[i].windBias)*flakes[i].width/256;
+                flakes[i].y += flakes[i].height/128*flakes[i].fallSpeed;
+                flakes[i].rotation += flakes[i].dTheta;
+
+                if (flakes[i].x < -flakes[i].width/2 || flakes[i].x >1024 + flakes[i].width/2 || flakes[i].y > 512 + flakes[i].height/2) {
+                    stage.removeChild(flakes[i]);
+                    flakes[i].destroy({children:true, texture:true, baseTexture:true});
+                    flakes[i] = null;
+                    flakeCount--;
+                }
+            }
+        }
+        if (false && !(now%15) && flakes[0]){
+        console.log(flakes[0].y);
+        console.log(flakes[0].x);
+        }
+
+        renderer.render(stage);
+        requestAnimationFrame(pixiAnimLoop);
+    }
+})();
+
+pixiAnimLoop();
+//animLoop();
+
 
 //testDraw(genSnowflakeMesh());
 
