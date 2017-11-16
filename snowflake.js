@@ -58,15 +58,11 @@ function inCircumcircle(a, b, c, d) {
     return (ccw > 0) ? (detn > 0) : (detn < 0);
 }
 
-function pointOnCircle(origin, radius) {
-    var angle = Math.random()*2*Math.PI;
-    return [origin[0]+radius*Math.cos(angle), origin[1]+radius*Math.sin(angle)];
-}
 
 //var canvas = document.getElementById("dotdemo");
 //var ctx = canvas.getContext("2d");
 
-function Triangulation(ma, mb, mc) {
+function oldTriangulation(ma, mb, mc) {
     var points=[] ; 
     var i; 
     points.push(ma);
@@ -266,45 +262,47 @@ function Triangulation(ma, mb, mc) {
 
 function sq(x) {return x*x}
 
-var theta = 2*Math.PI/12;
-var sliceSin = Math.sin(theta);
-var sliceCos = Math.cos(theta);
-var sliceTan = Math.tan(theta);
-var upperSlope = (1-sliceCos)/sliceSin;
 
 //n: number of points within slice
 //center: bool, draw center point?
 //right: bool, draw right point?
 //left: bool, draw left point?
-var genSnowflakePoints = function(n,center,right,left) {
-    var li = [];
-    var i;
-    var p;
-     
-    for (i = 0; i<n; ++i) {
-        do {
-            p = [Math.random(), Math.random()];
-            if (p[0] > p[1]) {p = [p[1], p[0]];}
-            p = [p[0]*sliceTan, p[1]];
-        } while ((p[0] > sliceSin) || p[1] < 0.1 || p[1]>1-upperSlope*p[0]);
-        li.push(p);
-    }
+var genSnowflakePoints = (function(){
+    var theta = 2*Math.PI/12;
+    var sliceSin = Math.sin(theta);
+    var sliceCos = Math.cos(theta);
+    var sliceTan = Math.tan(theta);
+    var upperSlope = (1-sliceCos)/sliceSin;
+    return function(n,center,right,left) {
+        var li = [];
+        var i;
+        var p;
+         
+        for (i = 0; i<n; ++i) {
+            do {
+                p = [Math.random(), Math.random()];
+                if (p[0] > p[1]) {p = [p[1], p[0]];}
+                p = [p[0]*sliceTan, p[1]];
+            } while ((p[0] > sliceSin) || p[1] < 0.1 || p[1]>1-upperSlope*p[0]);
+            li.push(p);
+        }
 
-    if (center) {
-        li.push([0,0]);
-    }
+        if (center) {
+            li.push([0,0]);
+        }
 
-    if (left) {
-        li.push([0,Math.random()*0.7+0.3]);
-    }
+        if (left) {
+            li.push([0,Math.random()*0.7+0.3]);
+        }
 
-    if (right) {
-        var y = Math.random()*0.7+0.3;
-        li.push([sliceSin*y,sliceCos*y]);
-    }
+        if (right) {
+            var y = Math.random()*0.7+0.3;
+            li.push([sliceSin*y,sliceCos*y]);
+        }
 
-    return li;
-}
+        return li;
+    }
+})();
 
 var genSnowflakeMesh = function() {
     //First, pick a number of points between 5 and 10
@@ -328,7 +326,7 @@ var genSnowflakeMesh = function() {
     var points = genSnowflakePoints(n,center_p,right_p,left_p);
     var i;
 
-    var t = Triangulation([-10,-10], [-10,10], [20,0]);
+    var t = new Triangulation([-10,-10], [-10,10], [20,0]);
 
     t.addPoints(points); 
     
@@ -357,8 +355,8 @@ var pickFlakeEdges = function(t) {
     return chosenEdges;
 }
 
-//Draw a snowflake on a new canvas, creating a snowflake/canvas object
-var newCanvasDraw = function(fullSize) {
+//Draw a snowflake on a canvas, creating a snowflake/canvas object
+var canvasDraw = function(canv, fullSize) {
     //Now would be the time to generate a random seed, if the generator is replaced
     //TODO: transform this to have the mesh gen and translations etc in a webworker if possible.
     //Only draw in the main thread.
@@ -383,7 +381,6 @@ var newCanvasDraw = function(fullSize) {
     var a,b;
     var pass;
     var e;
-    var canv = document.createElement('canvas');
     canv.width = fullSize; 
     canv.height = fullSize;
     var ctx = canv.getContext('2d');
@@ -422,85 +419,9 @@ var newCanvasDraw = function(fullSize) {
         }
         ctx.stroke();
     }
-
-    return {"canvas":canv};
-
-}
-
-function copyToOnScreen(oCanvas, x, y) {
-    var c = canvas.getContext('2d');
-    c.drawImage(oCanvas, x, y);
 }
 
 
-testDrawOffscreen = function() {
-   flakes2 = [];
-   flakes2[0] = newCanvasDraw(300); 
-   copyToOnScreen(flakes2[0].canvas, 0, 0);
-   flakes2[1] = newCanvasDraw(150); 
-   copyToOnScreen(flakes2[1].canvas, 300, 150);
-   flakes2[2] = newCanvasDraw(64); 
-   copyToOnScreen(flakes2[2].canvas, 170, 300);
-}
-
-//testDrawOffscreen();
-
-/*
-var lastFlake = -100;
-var now = 0;
-var flakes = [];
-var flakeCount = 0;
-var canvasAnimLoop = function() {
-    ctx.clearRect(0,0,canvas.width, canvas.height);
-    now++; 
-    var i;
-    if ((flakeCount < 5) && (lastFlake + 90 < now)){
-        lastFlake = now; 
-        var size;
-        for (i=0; i<5; ++i) {
-            if (!flakes[i]) {
-                switch (i) {
-                    case 0:
-                        size = 100;
-                        break;
-                    case 1:
-                        size = 128;
-                        break;
-                    case 2:
-                        size = 170;
-                        break;
-                    case 3:
-                        size = 224;
-                        break;
-                    case 4:
-                        size = 256;
-                        break;
-                }
-                var newFlake = newCanvasDraw(size);
-                flakes[i] = [newFlake, newFlake.canvas.width, Math.random()*1024, -newFlake.canvas.width, Math.random()+0.5, Math.random()];
-                flakeCount++;
-                break;
-            }
-        }
-    }
-
-    for (i=0; i<5; ++i) {
-        if (flakes[i]) {
-            copyToOnScreen(flakes[i][0].canvas, flakes[i][2], flakes[i][3]);
-
-            flakes[i][2] += (Math.random()-flakes[i][5])*flakes[i][1]/256;
-            flakes[i][3] += flakes[i][1]/128*flakes[i][4];
-
-            if (flakes[i][2] < -flakes[i][1] || flakes[i][2] >1024 + flakes[i][1] || flakes[i][3] > 512 + flakes[i][1]) {
-                flakes[i] = null;
-                flakeCount--;
-            }
-        }
-    }
-    requestAnimationFrame(canvasAnimLoop);
-}
-*/
-//PIXI.GC_MODES.DEFAULT = PIXI.GC_MODES.AUTO;
 var renderer = PIXI.autoDetectRenderer(1024,512);
 document.getElementById("graphicsSpace").appendChild(renderer.view);
 var stage = new PIXI.Container();
@@ -509,12 +430,12 @@ function spriteFromCanvas(c) {
     return new PIXI.Sprite(PIXI.Texture.fromCanvas(c));
 }
 
-
-var canvases = 
+    
 
 var pixiAnimLoop = (function() {
     var lastFlake = -100;
     var now = 0;
+    var canvases = [document.createElement('canvas'),document.createElement('canvas'),document.createElement('canvas'),document.createElement('canvas'),document.createElement('canvas')];
     var flakes = [null,null,null,null,null];
     var flakeCount = 0;
     return function() {
@@ -542,10 +463,10 @@ var pixiAnimLoop = (function() {
                             size = 256;
                             break;
                     }
-                    var newFlake = newCanvasDraw(size);
-                    var newSprite = spriteFromCanvas(newFlake.canvas);
+                    canvasDraw(canvases[i], size);
+                    var newSprite = spriteFromCanvas(canvases[i]);
                     newSprite.x = Math.random()*1024;
-                    newSprite.y = -newFlake.canvas.height/2;
+                    newSprite.y = -canvases[i].height/2;
                     newSprite.rotation = 2*Math.PI*Math.random();
                     newSprite.dTheta = (Math.random()-.5)/80;
                     newSprite.anchor.set(0.5, 0.5);
