@@ -1,6 +1,10 @@
 //Simple Delaunay triangulation.
 //All points as [x,y] arrays.
 
+function sq(x) {
+    return x*x;
+}
+
 function Triangulation(ma, mb, mc) {
     this.points=[] ; 
     this.points.push(ma);

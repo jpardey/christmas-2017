@@ -1,17 +1,3 @@
-
-//generate n random points within suitable triangle
-function genPoint(n){
-    var li = [];
-    var i;
-    var p;
-    for (i=0; i< n; ++i) {
-        p =  [Math.random(), Math.random()];
-        if (p[0] > p[1]) li.push(p); 
-        else li.push([p[1], p[0]]);
-    }
-    return li;
-}
-
 //Get new points array mirrored around the 30 deg CW axis 
 function getMirrored30(points) {
     var i;
@@ -33,235 +19,6 @@ function getRotated60(points) {
     }   
     return rpoints;
 }
-
-
-//is point d in circumcircle defined by a, b, c?
-function inCircumcircle(a, b, c, d) {
-    var abx = b[0] - a[0]; 
-    var bcx = c[0] - b[0]; 
-    var aby = b[1] - a[1]; 
-    var bcy = c[1] - b[1]; 
-    var ccw = abx*bcy - aby*bcx; //Cross product of AB and BC. Positive if points in CCW order, negative otherwise
-    var adx = d[0] - a[0];
-    var bdx = d[0] - b[0];
-    var cdx = d[0] - c[0];
-    var ady = d[1] - a[1];
-    var bdy = d[1] - b[1];
-    var cdy = d[1] - c[1];
-
-    var ad2 = ady*ady + adx*adx;
-    var bd2 = bdy*bdy + bdx*bdx;
-    var cd2 = cdy*cdy + cdx*cdx;
-
-    var detn = adx*bdy*cd2 + cdx*ady*bd2 + bdx*cdy*ad2 - adx*cdy*bd2 - bdx*ady*cd2 - cdx*bdy*ad2;
-    //console.log(detn);
-    return (ccw > 0) ? (detn > 0) : (detn < 0);
-}
-
-
-//var canvas = document.getElementById("dotdemo");
-//var ctx = canvas.getContext("2d");
-
-function oldTriangulation(ma, mb, mc) {
-    var points=[] ; 
-    var i; 
-    points.push(ma);
-    points.push(mb);
-    points.push(mc);
-    var triangles = [];
-    triangles.push([0, 1, 2]); //list of list of verticies
-
-    var getFullTriangulation = function () {
-        return triangles;
-    }
-    
-    //Get the triangulation without points 0, 1, 2
-    var getTriangulation = function() {
-        var realTriangles = [];
-        var i;
-        var j;
-        outer: for (i = 0; i<triangles.length; ++i) {
-            for (j=0; j<3; ++j) {
-                if (triangles[i][j] < 3) continue outer;
-                //TODO: This is wrong. Ends up with concave exteriors in some cases.
-                // Removing a corner may need to add new edge between points on hull
-            } 
-            realTriangles.push(triangles[i]);
-        } 
-        return realTriangles;
-    }
-
-    //Get each unique edge from triangulation
-    var getEdges = function () {
-        var j;
-        var edges={};
-        for (j=0;j<triangles.length;++j) {
-            var k;
-            for (k = 0; k<3; ++k) {
-                var a = triangles[j][k];
-                var b = triangles[j][(k+1)%3]; //Next node
-                if ((a < 3) || (b<3)) continue;
-                //TODO: This is wrong. See getTriangulation
-                var edgestr = (a>b)? "e"+a+","+b: "e"+b+","+a; //Unique and identical string for each edge, orientation independent.
-                    //Might be slow, but seems fast enough for our purposes.
-                edges[edgestr] = [a,b];  //Add verticies as value to reduce string ops slightly.
-            } 
-        }
-        return Object.values(edges);
-    }
-    
-    var getFullEdges = function () {
-        var j;
-        var edges={};
-        for (j=0;j<triangles.length;++j) {
-            var k;
-            for (k = 0; k<3; ++k) {
-                var a = triangles[j][k];
-                var b = triangles[j][(k+1)%3]; //Next node
-               // if ((a < 3) || (b<3)) continue;
-                var edgestr = (a>b)? "e"+a+","+b: "e"+b+","+a; //Unique and identical string for each edge, orientation independent.
-                    //Might be slow, but seems fast enough for our purposes.
-                edges[edgestr] = [a,b];  //Add verticies as value to reduce string ops slightly.
-            } 
-        }
-        return Object.values(edges);
-    }
-
-    function compareFunc(a,b) {
-        if (a[0] > b[0]) return 1;
-        else if (a[0] === b[0]) return 0;
-        else return -1;
-    }
-    //Returns edges of MST. Might not belong here, but whatever.
-    //Not a great implementation of MST (half-hearted Prim's), but for most reasonable cases,
-    //more complex data structures required for proper implementations would likely
-    //perform worse than built in JS arrays.
-
-    //WARNING: Might not generate a full tree if identical points added.
-    var getMST = function() {
-        var weights = [];
-        var i;
-        var edges = getEdges();
-        for (i=0; i<edges.length; ++i) {
-            //Interpreter should inline sq func, if we care.
-            weights[i] = [(sq(points[edges[i][0]][0]-points[edges[i][1]][0]) + sq(points[edges[i][0]][1]-points[edges[i][1]][1])), i, edges[i]]
-        } 
-        weights.sort(compareFunc);
-        var treeEdges = new Set(); //set of edge numbers
-        var treeVerts = new Set([3]); //Pick "random" vertex
-
-        var nextVert = -1;
-        var nextEdge = -1;
-        while(treeVerts.size < (points.length - 3)) {
-            //Iterate over edges to find one with a root in treeVerts
-            for (i = 0; i < weights.length; ++i) {
-                if (treeVerts.has(weights[i][2][0]) )  {
-                    if (!treeVerts.has(weights[i][2][1])) {
-                        nextVert = weights[i][2][1];    
-                        nextEdge = weights[i][1];
-                        weights.splice(i,1);
-                        break;
-                    }
-                }
-                else if (treeVerts.has(weights[i][2][1])) {
-                    //We already know weights[i][2][0] is not in treeVerts
-                    nextVert = weights[i][2][0];    
-                    nextEdge = weights[i][1];
-                    weights.splice(i,1);
-                    break;
-                }
-            }
-            if (nextVert<0 || treeVerts.has(nextVert)) {
-                //Technically this is an error, I believe in triangulation and
-                //edges. However, if true trees aren't critical, this won't hurt.
-                //However, it seems to work fine
-                //console.log("MST warning: Could not find next point.");
-                break;
-            }
-            treeEdges.add(nextEdge);
-            treeVerts.add(nextVert);
-        }
-        return treeEdges;
-    }
-
-    //Returns points, including ma, mb, mc, since I don't want to fix the indexing.
-    var getPoints = function() {
-        return points;
-    }
-    //Add points to the actual triangulation
-
-    var addPoints = function(li) {
-        var i;
-        for (i=0; i<li.length; ++i) {
-            addPoint(li[i]);
-        }
-    }
-
-    //WARNING: Overlapping points may not be added properly.
-    var addPoint = function(point) { 
-        var x = points.length; //New point id in list of triangles
-        points.push(point); //Add added point to point list
-        badTries = []; //Start with no bad triangles. Bad var name I know. Stores index of triangle in triangles to remove.
-        var j; //Index var
-        for (j=0; j<triangles.length; ++j) {
-            if (inCircumcircle(points[triangles[j][0]] , points[triangles[j][1]], points[triangles[j][2]], points[x])) {
-                badTries.push(j);
-                //get actual location from point array. If new point in the circumcircle, not Delaunay, add to bad triangles
-            }
-        }
-        var poly = [];  //"Star shaped polygon" edges, as strings of form "ei,j" where i > j for an edge Eij (aka Eji).
-        edges = {};
-        for (j=0;j<badTries.length;++j) {
-            var k;
-            for (k = 0; k<3; ++k) {
-                var a = triangles[badTries[j]][k];
-                var b = triangles[badTries[j]][(k+1)%3]; //Next node
-                var edgestr = (a>b)? "e"+a+","+b: "e"+b+","+a; //Unique and identical string for each edge, orientation independent.
-                    //Might be slow, but seems fast enough for our purposes.
-                if (edges.hasOwnProperty(edgestr)) {edges[edgestr] = -1;} //If edge in list already, invalidate
-                else {edges[edgestr] = [a,b];}  //Add verticies as value to reduce string ops slightly.
-            } 
-        }
-        var e;
-        for (e in edges) {
-            if (edges.hasOwnProperty(e) && (edges[e] !== -1)) {
-                poly.push(e); //Any edge seen only once will be part of the enclosing triangle
-            }
-        }
-        var goodTries = []; // Triangles to preserve. Of course it would be possible to avoid this step
-            // and directly remove bad triangles, but that gets complex
-        var badTriesSet = new Set(badTries);
-        for (j=0; j<triangles.length; ++j) {
-            if (!(badTriesSet.has(j))) {
-                goodTries.push(triangles[j]);
-            }
-        }
-        triangles.length = 0; //Empty triangles
-        for (j=0; j<goodTries.length; ++j) {
-            triangles.push(goodTries[j]); //Add good triangles
-        }
-        //Add the new triangles, triangulating the star shaped polygon to new point x.
-        for (j=0; j<poly.length; ++j) {
-            e = poly[j];
-            triangles.push([edges[e][0], edges[e][1], x]);
-        }
-    }
-
-    return {
-        "addPoint":addPoint, 
-        "addPoints":addPoints, 
-        "getPoints":getPoints, 
-        "getEdges":getEdges, 
-        "getFullEdges":getFullEdges, 
-        "getTriangulation":getTriangulation, 
-        "getFullTriangulation":getFullTriangulation, 
-        "getMST":getMST
-    };
-         
-}
-
-function sq(x) {return x*x}
-
 
 //n: number of points within slice
 //center: bool, draw center point?
@@ -356,10 +113,12 @@ var pickFlakeEdges = function(t) {
 }
 
 //Draw a snowflake on a canvas, creating a snowflake/canvas object
-var canvasDraw = function(canv, fullSize) {
+var canvasDraw = function(fullSize, dist) {
     //Now would be the time to generate a random seed, if the generator is replaced
     //TODO: transform this to have the mesh gen and translations etc in a webworker if possible.
     //Only draw in the main thread.
+    
+    canv = document.createElement('canvas');
     var t = genSnowflakeMesh();
     var edgeList = pickFlakeEdges(t);
     var edges = t.getEdges();
@@ -381,32 +140,33 @@ var canvasDraw = function(canv, fullSize) {
     var a,b;
     var pass;
     var e;
+    var rFactor = 2; //Relationship between line size and point circle radius. 2 is maximum for smooth ends. 
     canv.width = fullSize; 
     canv.height = fullSize;
     var ctx = canv.getContext('2d');
     for (pass = 0; pass<2; ++pass) {
         if (!pass) {
             ctx.lineWidth = size/16;
-            ctx.strokeStyle = "#AAAAAA";
-            ctx.fillStyle = "#AAAAAA";
+            ctx.strokeStyle = "hsl(250, 5%, "+Math.floor(75+20/dist)+"%)";
+            ctx.fillStyle = ctx.strokeStyle;
         }
         else {
             ctx.lineWidth = size/64;
-            ctx.strokeStyle = "#7777BB";
-            ctx.fillStyle = "#7777BB";
+            ctx.strokeStyle = "hsl(250, "+Math.floor(40+30/dist)+"%, "+Math.floor(30+40/dist)+"%)";
+            ctx.fillStyle = ctx.strokeStyle;
         }
 
-
-        //Draw circle at each point
+        //Draw circle at each point, for each pass, matching radius of line
         for (i = 0; i<12; ++i) {
             var drawPoints = allPoints[i];
             for (l = 3; l<drawPoints.length; ++l) {
                 ctx.beginPath();
-                ctx.arc(drawPoints[l][0]*size/2 + offset, drawPoints[l][1]*size/2 + offset, ctx.lineWidth/2, 0, 2 * Math.PI);
+                ctx.arc(drawPoints[l][0]*size/2 + offset, drawPoints[l][1]*size/2 + offset, ctx.lineWidth/rFactor, 0, 2 * Math.PI);
                 ctx.fill();
             }
         }
 
+        //Draw all lines
         ctx.beginPath();
         for (l = 0; l<edgeList.length; ++l) {
             for(i=0;i<12;++i) {
@@ -419,93 +179,238 @@ var canvasDraw = function(canv, fullSize) {
         }
         ctx.stroke();
     }
+    return canv;
 }
-
-
-var renderer = PIXI.autoDetectRenderer(1024,512);
-document.getElementById("graphicsSpace").appendChild(renderer.view);
-var stage = new PIXI.Container();
 
 function spriteFromCanvas(c) {
     return new PIXI.Sprite(PIXI.Texture.fromCanvas(c));
 }
 
-    
+var BackgroundFlakes = function() {
+    this.flakeSprites = [];
+    this.xs = [];
+    this.ys = [];
+    this.spriteCount = 0;
+    this.maxSprites = 200; //TODO: Again, connect to performance.
+    this.lastSprite = -100000;
+}
 
-var pixiAnimLoop = (function() {
-    var lastFlake = -100;
-    var now = 0;
-    var canvases = [document.createElement('canvas'),document.createElement('canvas'),document.createElement('canvas'),document.createElement('canvas'),document.createElement('canvas')];
-    var flakes = [null,null,null,null,null];
-    var flakeCount = 0;
-    return function() {
-        now++; 
-        var i;
-        if ((flakeCount < 5) && (lastFlake + 90 < now)){
-            lastFlake = now; 
-            var size;
-            for (i=0; i<5; ++i) {
-                if (!flakes[i]) {
-                    switch (i) {
-                        case 0:
-                            size = 100;
-                            break;
-                        case 1:
-                            size = 128;
-                            break;
-                        case 2:
-                            size = 170;
-                            break;
-                        case 3:
-                            size = 224;
-                            break;
-                        case 4:
-                            size = 256;
-                            break;
-                    }
-                    canvasDraw(canvases[i], size);
-                    var newSprite = spriteFromCanvas(canvases[i]);
-                    newSprite.x = Math.random()*1024;
-                    newSprite.y = -canvases[i].height/2;
-                    newSprite.rotation = 2*Math.PI*Math.random();
-                    newSprite.dTheta = (Math.random()-.5)/80;
-                    newSprite.anchor.set(0.5, 0.5);
-                    newSprite.fallSpeed = Math.random()+0.5;
-                    newSprite.windBias = Math.random();
-                    stage.addChild(newSprite);
+BackgroundFlakes.prototype.setup = function(mainLoop){
+    this.main = mainLoop;
+    this.container = new PIXI.particles.ParticleContainer(1000, {
+        scale: true,
+        position:true,
+        rotation:false,
+        uvs:false,
+        alpha:true
+    });
+    mainLoop.resources["flake"] = "flake16.png";
+    return this.container;
+}
 
-                    flakes[i] = newSprite;
-                    flakeCount++;
-                    break;
-                }
-            }
-        }
+BackgroundFlakes.prototype.update = function(time, delta){
+    if (delta > 100) {delta = 100;}
 
-        for (i=0; i<5; ++i) {
-            if (flakes[i]) {
-
-                flakes[i].x += (Math.random()-flakes[i].windBias)*flakes[i].width/256;
-                flakes[i].y += flakes[i].height/128*flakes[i].fallSpeed;
-                flakes[i].rotation += flakes[i].dTheta;
-
-                if (flakes[i].x < -flakes[i].width/2 || flakes[i].x >1024 + flakes[i].width/2 || flakes[i].y > 512 + flakes[i].height/2) {
-                    stage.removeChild(flakes[i]);
-                    flakes[i].destroy({children:true, texture:true, baseTexture:true});
-                    flakes[i] = null;
-                    flakeCount--;
-                }
-            }
-        }
-        if (false && !(now%15) && flakes[0]){
-        console.log(flakes[0].y);
-        console.log(flakes[0].x);
-        }
-
-        renderer.render(stage);
+    var i;
+    if ((this.spriteCount < this.maxSprites) && (this.lastSprite + 120 < time)) {
+        var newSprite = new PIXI.Sprite(this.main.loader.resources["flake"].texture);    
+        newSprite.anchor.set(0.5, 1); //Makes math just slightly easier.
+        newSprite.x = Math.random()*1024;
+        newSprite.y = 0;
+        this.flakeSprites.push(newSprite);
+        this.container.addChild(newSprite);
+        this.xs.push(newSprite.x);
+        this.ys.push(newSprite.y);
+        var scale = Math.random()*.75 + .25;
+        newSprite.scale.set(scale,scale);
+        this.spriteCount++;
+        this.lastSprite = time;
     }
-})();
 
-PIXI.ticker.shared.add(pixiAnimLoop);
+
+    var xOffsets = [];
+    var yOffsets = [];
+    for (i=0; i<10; ++i) {
+        xOffsets[i]=((Math.random()-Math.random())/40*delta);
+        yOffsets[i]=((Math.random()/50+0.05)*delta);
+    }
+    var xloop = Math.floor(Math.random()*5+5); //Will only go to 9 unless random == 1.0, which will almost surely never (probably just never) happen
+    var yloop = Math.floor(Math.random()*6+5);
+    //Seperating in hopes of greater efficiency
+    for (i=0; i<this.spriteCount; ++i) {
+        this.ys[i] += yOffsets[i%yloop];
+    }
+    for (i=0; i<this.spriteCount; ++i) {
+        if (this.ys[i]>512+16) {
+            this.ys[i] = 0;
+            this.xs[i] = Math.random()*1024;
+        }
+
+    }
+    for (i=0; i<this.spriteCount; ++i) {
+        this.xs[i] += xOffsets[i%xloop];
+    }
+    for (i=0; i<this.spriteCount; ++i) {
+        this.flakeSprites[i].x = this.xs[i];
+        this.flakeSprites[i].y = this.ys[i];
+    }
+
+}
+
+
+
+var ForegroundFlakes = function() {
+    this.flakes = [];
+    this.flakeCount = 0;
+    this.lastFlake = -100000;
+    this.maxFlakes = 10; //TODO: Connect to performance of system. Gobal settings and performance module?
+}
+
+ForegroundFlakes.prototype.setup = function(mainLoop) {
+    this.main = mainLoop;
+    this.time = Date.now();
+    this.container = new PIXI.Container();
+    return this.container;
+}
+
+ForegroundFlakes.prototype.update = function(time,delta){
+
+    var i;
+    if ((this.flakeCount < this.maxFlakes) && (this.lastFlake + 1500 < time)) {
+        var dist = ((2*Math.random())+1);
+        var size = 300/dist; //TODO: Better size picking function?
+            //This will range between 256/3 and 256 px with a nice reciprocal slope. Should reflect flakes in a range of spaces.
+        //Now, find the index of the next smallest one to replace in the ordering, ordering larger to smaller
+        for (i=0; i<this.flakes.length; ++i) {
+            if (size < this.flakes[i].size) {
+                break;
+            }
+        } //i is now the position to replace, provided everything's in order.
+        var canvas = canvasDraw(size, dist);
+        var newSprite = spriteFromCanvas(canvas); 
+        delete canvas; //This probably won't help anything, but worth a shot.
+        newSprite.x = Math.random()*1024; //TODO: Width param in global
+        newSprite.y = -size/2;
+        newSprite.size = size;
+        newSprite.rotation = 2*Math.PI*Math.random();
+        newSprite.dTheta = (Math.random()-.5); //Angle to rotate per some time quantity.
+        newSprite.anchor.set(0.5, 0.5);
+        newSprite.fallSpeed = Math.random()/2+0.75; //Size relative fall rate per some time quantity
+        newSprite.windBias = Math.random()-0.5; //TODO: Make global
+
+        this.flakes.splice(i, 0, newSprite);
+        this.container.addChildAt(newSprite, i);
+        this.lastFlake = time;
+        this.flakeCount++;
+    }
+
+    var len = this.flakes.length;
+    for (i=0; i<len; ++i){
+        this.flakes[i].x += (this.flakes[i].windBias)*this.flakes[i].size * delta/1000 //Avg 1/2 flake width per second?
+        this.flakes[i].y += (this.flakes[i].size*this.flakes[i].fallSpeed)*delta/1500; 
+        this.flakes[i].rotation += this.flakes[i].dTheta*delta/1000;
+    }
+    for (i=0; i<len; ++i){
+        if (this.flakes[i].x < -this.flakes[i].size/2 || this.flakes[i].x >1024 + this.flakes[i].size/2 || this.flakes[i].y > 512 + this.flakes[i].size/2) {
+            var oldFlake = this.container.removeChildAt(i)
+            oldFlake.destroy({children:true, texture:true, baseTexture:true});
+            this.flakes[i] = null;
+            this.flakes.splice(i,1);
+            this.flakeCount--;
+            i--; len--;
+        }
+    }
+
+
+}
+    
+var MainAnimLoop = function() {
+    this.loader = new PIXI.loaders.Loader();
+    this.loaded = false;
+    this.layers = [];
+    this.resources = {};
+    this.ticker = new PIXI.ticker.Ticker();
+    this.ticker.autostart = false; 
+    this.ticker.add(this.update, this);
+    this.frameDiv = document.getElementById("framecount");
+    this.time = 0;
+
+    //This is pretty gross. Should be handled a bit more in a DI way, but good enough for now.
+    //May need to be changed if there's an intro
+    this.renderer = PIXI.autoDetectRenderer(1024,512);
+    document.getElementById("graphicsSpace").appendChild(this.renderer.view);
+    this.stage = new PIXI.Container();
+}
+
+//Add layers. Must be added back to front. Might add a addLayerAt method if needed.
+//setup should return a container to add to stage, for consistent rendering order
+MainAnimLoop.prototype.addLayer = function(obj) {
+    this.stage.addChild(obj.setup(this));
+    this.layers.push(obj);
+}
+
+MainAnimLoop.prototype.start = function() {
+    if (this.loaded) {
+        this.ticker.start();
+    }
+    else {
+        this.load(true);
+    }
+}
+
+MainAnimLoop.prototype.load = function(andStart) {
+    var key;
+    var value;
+    var isThereStuff = false;
+    for (key in this.resources){
+        if (this.resources.hasOwnProperty(key)){
+            value = this.resources[key];
+            this.loader.add(key, value);
+            isThereStuff = true;
+        }
+    } 
+    if (isThereStuff) {
+        var that = this;
+        this.loader.load(function() {
+            that.loaded = true;
+            that.ticker.start();
+        });
+        this.loader.onError.add(function() {
+            console.log("error...");
+        })
+    }
+    else {
+        this.loaded=true;
+        this.ticker.start();
+    }
+}
+
+MainAnimLoop.prototype.stop = function() {
+    this.ticker.stop();
+}
+
+MainAnimLoop.prototype.update = function() {
+    var time = Date.now();
+    var delta = time - this.time;
+    this.time = time;
+    var i;
+    for (i=0; i<this.layers.length; ++i) {
+        this.layers[i].update.call(this.layers[i], time,delta);
+    }
+    this.renderer.render(this.stage);
+}
+
+var animLoop = new MainAnimLoop();
+var foreground = new ForegroundFlakes();
+var background = new BackgroundFlakes();
+
+//var loader = new PIXI.loaders.Loader();
+
+animLoop.addLayer(background);
+animLoop.addLayer(foreground);
+//Also, the rest of the resources. Perhaps have as global so any layer can add to it?
+animLoop.start();
+
 //animLoop();
 
 
