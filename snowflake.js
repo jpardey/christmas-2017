@@ -204,7 +204,7 @@ BackgroundFlakes.prototype.setup = function(mainLoop){
         uvs:false,
         alpha:true
     });
-    mainLoop.resources["flake"] = "flake16.png";
+    mainLoop.resources["flake"] = "./flake16.png";
     return this.container;
 }
 
@@ -274,6 +274,7 @@ ForegroundFlakes.prototype.setup = function(mainLoop) {
 }
 
 ForegroundFlakes.prototype.update = function(time,delta){
+    if (delta > 100) {delta = 100;}
 
     var i;
     if ((this.flakeCount < this.maxFlakes) && (this.lastFlake + 1500 < time)) {
