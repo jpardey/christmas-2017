@@ -147,12 +147,12 @@ var canvasDraw = function(fullSize, dist) {
     for (pass = 0; pass<2; ++pass) {
         if (!pass) {
             ctx.lineWidth = size/16;
-            ctx.strokeStyle = "hsl(250, 5%, "+Math.floor(75+20/dist)+"%)";
+            ctx.strokeStyle = "hsl(220, 5%, "+Math.floor(75+20/dist)+"%)";
             ctx.fillStyle = ctx.strokeStyle;
         }
         else {
             ctx.lineWidth = size/64;
-            ctx.strokeStyle = "hsl(250, "+Math.floor(40+30/dist)+"%, "+Math.floor(30+40/dist)+"%)";
+            ctx.strokeStyle = "hsl(220, "+Math.floor(20+30/dist)+"%, "+Math.floor(30+40/dist)+"%)";
             ctx.fillStyle = ctx.strokeStyle;
         }
 
@@ -231,7 +231,7 @@ BackgroundFlakes.prototype.update = function(time, delta){
     var xOffsets = [];
     var yOffsets = [];
     for (i=0; i<10; ++i) {
-        xOffsets[i]=((Math.random()-Math.random())/40*delta);
+        xOffsets[i]=(this.main.wind.v * .5 + 0.5*(Math.random()-Math.random())/40*delta);
         yOffsets[i]=((Math.random()/50+0.05)*delta);
     }
     var xloop = Math.floor(Math.random()*5+5); //Will only go to 9 unless random == 1.0, which will almost surely never (probably just never) happen
@@ -245,8 +245,12 @@ BackgroundFlakes.prototype.update = function(time, delta){
             this.ys[i] = 0;
             this.xs[i] = Math.random()*1024;
         }
-
     }
+    for (i=0; i<this.spriteCount; ++i) {
+        if (this.xs[i]> 1024+20) {this.xs[i] = -10;}
+        if (this.xs[i]< -20) {this.xs[i] = 1024+10;}
+    }
+
     for (i=0; i<this.spriteCount; ++i) {
         this.xs[i] += xOffsets[i%xloop];
     }
@@ -307,12 +311,14 @@ ForegroundFlakes.prototype.update = function(time,delta){
 
     var len = this.flakes.length;
     for (i=0; i<len; ++i){
-        this.flakes[i].x += (this.flakes[i].windBias)*this.flakes[i].size * delta/1000 //Avg 1/2 flake width per second?
+        this.flakes[i].x += (0.8*this.main.wind.v + 0.2*this.flakes[i].windBias)*this.flakes[i].size * delta/1000 //Avg 1/2 flake width per second?
         this.flakes[i].y += (this.flakes[i].size*this.flakes[i].fallSpeed)*delta/1500; 
         this.flakes[i].rotation += this.flakes[i].dTheta*delta/1000;
     }
     for (i=0; i<len; ++i){
-        if (this.flakes[i].x < -this.flakes[i].size/2 || this.flakes[i].x >1024 + this.flakes[i].size/2 || this.flakes[i].y > 512 + this.flakes[i].size/2) {
+        if (this.flakes[i].x < -this.flakes[i].size ){this.flakes[i].x = 1024 + this.flakes[i].size/2} 
+        else if (this.flakes[i].x >1024 + this.flakes[i].size ) {this.flakes[i].x = -this.flakes[i].size/2}
+        else if (this.flakes[i].y > 512 + this.flakes[i].size/2) {
             var oldFlake = this.container.removeChildAt(i)
             oldFlake.destroy({children:true, texture:true, baseTexture:true});
             this.flakes[i] = null;
@@ -321,8 +327,53 @@ ForegroundFlakes.prototype.update = function(time,delta){
             i--; len--;
         }
     }
+}
 
+var Wind = function(propertyName) {
+    this.v = 0; //vel, between 0 and 1
+    this.b = 0; //Base velocity between 0 and 1
+    this.db = 0; //rate of change
+    this.ddb = 0; //2nd dif
+    this.speedState = 0;
+    this.nextSpeedEvent = 0;
+    this.gustState = 0;
+    this.gustLevel = 0.1; //Between 0 and 1.
+    this.nextGustEvent = 0;
+    this.propertyName = propertyName ? propertyName : "wind";
+}
 
+Wind.prototype.setup = function(mainLoop) {
+    mainLoop[this.propertyName] = this;
+    return null;
+}
+
+Wind.prototype.update = function(time, delta) {
+    if (delta > 50) delta = 50;
+
+    this.b += delta * this.db;
+
+    if (time > this.nextSpeedEvent) {
+        this.nextSpeedEvent = time + (2*Math.random()+0.5)* 5000;
+        this.ddb = (0.6*this.ddb + 0.4*((Math.random()-0.5)/200/500));
+        console.log("New 2nd derivative: ", this.ddb);
+    }
+
+    if (Math.abs(this.b) > 1) {
+        this.b -= 2*delta*this.db;
+        this.db = 0;
+        this.ddb *= -Math.random();
+        console.log("Derivatives changed A: ", this.db, this.ddb);
+    }
+
+    this.db += delta*this.ddb;
+
+    if (Math.abs(this.db) > 0.01) {
+        this.db -= 2*delta*this.ddb;
+        this.ddb *= Math.random();
+        console.log("Derivative flipped B: ", this.db, this.ddb);
+    }
+
+    this.v = this.b;
 }
     
 var MainAnimLoop = function() {
@@ -346,7 +397,10 @@ var MainAnimLoop = function() {
 //Add layers. Must be added back to front. Might add a addLayerAt method if needed.
 //setup should return a container to add to stage, for consistent rendering order
 MainAnimLoop.prototype.addLayer = function(obj) {
-    this.stage.addChild(obj.setup(this));
+    var newContainer = obj.setup(this);
+    if (newContainer) {
+        this.stage.addChild(newContainer);
+    }
     this.layers.push(obj);
 }
 
@@ -404,11 +458,13 @@ MainAnimLoop.prototype.update = function() {
 var animLoop = new MainAnimLoop();
 var foreground = new ForegroundFlakes();
 var background = new BackgroundFlakes();
+var wind = new Wind("wind");
 
 //var loader = new PIXI.loaders.Loader();
 
 animLoop.addLayer(background);
 animLoop.addLayer(foreground);
+animLoop.addLayer(wind);
 //Also, the rest of the resources. Perhaps have as global so any layer can add to it?
 animLoop.start();
 

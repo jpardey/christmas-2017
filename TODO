@@ -1,7 +1,7 @@
-Add pixi.js support.
-Set up generation code to work in WebWorker, while rendering in main thread.
-Render to textures.
-How does rotation look when using textures? Downscale how much?
+Add pixi.js support. Y 
+Set up generation code to work in WebWorker, while rendering in main thread. PROBABLYNOT
+Render to textures. EASY
+How does rotation look when using textures? Downscale how much? LOOKS FINE WITHOUT DOWNSCALING 
 Background scene
 Background snow piles buildup or static?
 Background lights
@@ -13,3 +13,6 @@ Background sprites:
 Smoke from house chimney!!!
 Maybe a paper cutout asthetic? Heavy borders around most things? How will
     that work with smoke? Convex hull? Blobs that grow out?
+
+Make background snow a bit darker to gel with background foreground flakes
+Global settings, such as wind and preferences and performance options
