@@ -186,12 +186,13 @@ function spriteFromCanvas(c) {
     return new PIXI.Sprite(PIXI.Texture.fromCanvas(c));
 }
 
-var BackgroundFlakes = function() {
+var BackgroundFlakes = function(size, count) {
     this.flakeSprites = [];
+    this.size = size;
     this.xs = [];
     this.ys = [];
     this.spriteCount = 0;
-    this.maxSprites = 200; //TODO: Again, connect to performance.
+    this.maxSprites = count; //TODO: Again, connect to performance.
     this.lastSprite = -100000;
 }
 
@@ -209,10 +210,8 @@ BackgroundFlakes.prototype.setup = function(mainLoop){
 }
 
 BackgroundFlakes.prototype.update = function(time, delta){
-    if (delta > 100) {delta = 100;}
-
     var i;
-    if ((this.spriteCount < this.maxSprites) && (this.lastSprite + 120 < time)) {
+    if ((this.spriteCount < this.maxSprites) && (this.lastSprite + 250 < time)) {
         var newSprite = new PIXI.Sprite(this.main.loader.resources["flake"].texture);    
         newSprite.anchor.set(0.5, 1); //Makes math just slightly easier.
         newSprite.x = Math.random()*1024;
@@ -221,7 +220,7 @@ BackgroundFlakes.prototype.update = function(time, delta){
         this.container.addChild(newSprite);
         this.xs.push(newSprite.x);
         this.ys.push(newSprite.y);
-        var scale = Math.random()*.75 + .25;
+        var scale =this.size * (Math.random()*.25 + .75);
         newSprite.scale.set(scale,scale);
         this.spriteCount++;
         this.lastSprite = time;
@@ -231,8 +230,8 @@ BackgroundFlakes.prototype.update = function(time, delta){
     var xOffsets = [];
     var yOffsets = [];
     for (i=0; i<10; ++i) {
-        xOffsets[i]=(this.main.wind.v * .5 + 0.5*(Math.random()-Math.random())/40*delta);
-        yOffsets[i]=((Math.random()/50+0.05)*delta);
+        xOffsets[i]=(this.main.wind.v * .40 + 0.60*(Math.random()-Math.random())/40*delta*this.size);
+        yOffsets[i]=((Math.random()/50+0.05)*delta*this.size);
     }
     var xloop = Math.floor(Math.random()*5+5); //Will only go to 9 unless random == 1.0, which will almost surely never (probably just never) happen
     var yloop = Math.floor(Math.random()*6+5);
@@ -278,8 +277,6 @@ ForegroundFlakes.prototype.setup = function(mainLoop) {
 }
 
 ForegroundFlakes.prototype.update = function(time,delta){
-    if (delta > 100) {delta = 100;}
-
     var i;
     if ((this.flakeCount < this.maxFlakes) && (this.lastFlake + 1500 < time)) {
         var dist = ((2*Math.random())+1);
@@ -329,51 +326,51 @@ ForegroundFlakes.prototype.update = function(time,delta){
     }
 }
 
+var WindValGen = function() {
+    return (sq(Math.random())-0.75)/0.75;  //Squaring to bias towards negatives, while allowing some rightward breezes
+}
+
+var WindTimeGen = function() {
+    return 1500+4500*Math.random(); //TODO: Short times for testing. Might want to refine values and distro
+}
+
 var Wind = function(propertyName) {
     this.v = 0; //vel, between 0 and 1
-    this.b = 0; //Base velocity between 0 and 1
-    this.db = 0; //rate of change
-    this.ddb = 0; //2nd dif
-    this.speedState = 0;
-    this.nextSpeedEvent = 0;
-    this.gustState = 0;
-    this.gustLevel = 0.1; //Between 0 and 1.
-    this.nextGustEvent = 0;
+    this.basetime = 0; //Base time for interpolation
+    this.x1 = WindTimeGen(); //t0 rel time for t1
+    this.x2 = WindTimeGen(); //t1 rel time for t2
+    this.v0 = WindValGen();
+    this.v1 = WindValGen();
+    this.v2 = WindValGen();
     this.propertyName = propertyName ? propertyName : "wind";
 }
 
 Wind.prototype.setup = function(mainLoop) {
-    mainLoop[this.propertyName] = this;
+    mainLoop[this.propertyName] = this; //Assign the "wind" (or whatever) property of the main event loop
     return null;
 }
 
+function sq(x) {return x*x;}
+
 Wind.prototype.update = function(time, delta) {
-    if (delta > 50) delta = 50;
-
-    this.b += delta * this.db;
-
-    if (time > this.nextSpeedEvent) {
-        this.nextSpeedEvent = time + (2*Math.random()+0.5)* 5000;
-        this.ddb = (0.6*this.ddb + 0.4*((Math.random()-0.5)/200/500));
-        console.log("New 2nd derivative: ", this.ddb);
+    while (time > this.basetime + this.x1) {
+        this.basetime += this.x1;
+        this.v0 = this.v1;
+        this.x1 = this.x2;
+        this.v1 = this.v2;
+        this.x2 = WindTimeGen();
+        this.v2 = WindValGen();
+        console.log(this.v2);
     }
 
-    if (Math.abs(this.b) > 1) {
-        this.b -= 2*delta*this.db;
-        this.db = 0;
-        this.ddb *= -Math.random();
-        console.log("Derivatives changed A: ", this.db, this.ddb);
-    }
+    var t = time - this.basetime; 
+    var t1 = this.x1;
+    var t2 = this.x1 + this.x2;
+    
+    this.v =    this.v0 * (t - t1)/(t1) * (t-t2)/(t2) +  //Negatives cancel
+                this.v1 * (t)/(t1) * (t-t2)/(t1-t2) +
+                this.v2 * (t)/(t2) * (t-t1)/(t2-t1)
 
-    this.db += delta*this.ddb;
-
-    if (Math.abs(this.db) > 0.01) {
-        this.db -= 2*delta*this.ddb;
-        this.ddb *= Math.random();
-        console.log("Derivative flipped B: ", this.db, this.ddb);
-    }
-
-    this.v = this.b;
 }
     
 var MainAnimLoop = function() {
@@ -386,7 +383,7 @@ var MainAnimLoop = function() {
     this.ticker.add(this.update, this);
     this.frameDiv = document.getElementById("framecount");
     this.time = 0;
-
+    this.realtime = 0;
     //This is pretty gross. Should be handled a bit more in a DI way, but good enough for now.
     //May need to be changed if there's an intro
     this.renderer = PIXI.autoDetectRenderer(1024,512);
@@ -427,6 +424,7 @@ MainAnimLoop.prototype.load = function(andStart) {
     if (isThereStuff) {
         var that = this;
         this.loader.load(function() {
+            this.realtime = Date.now();
             that.loaded = true;
             that.ticker.start();
         });
@@ -435,6 +433,7 @@ MainAnimLoop.prototype.load = function(andStart) {
         })
     }
     else {
+        this.realtime = Date.now();
         this.loaded=true;
         this.ticker.start();
     }
@@ -446,23 +445,27 @@ MainAnimLoop.prototype.stop = function() {
 
 MainAnimLoop.prototype.update = function() {
     var time = Date.now();
-    var delta = time - this.time;
-    this.time = time;
+    var delta = time - this.realtime;
+    if (delta>100) delta=100;
+    this.time = this.time+delta;
+    this.realtime = time;
     var i;
     for (i=0; i<this.layers.length; ++i) {
-        this.layers[i].update.call(this.layers[i], time,delta);
+        this.layers[i].update.call(this.layers[i], this.time,delta);
     }
     this.renderer.render(this.stage);
 }
 
 var animLoop = new MainAnimLoop();
 var foreground = new ForegroundFlakes();
-var background = new BackgroundFlakes();
+var nearBackground = new BackgroundFlakes(1.0,50);
+var farBackground = new BackgroundFlakes(0.5,150);
 var wind = new Wind("wind");
 
 //var loader = new PIXI.loaders.Loader();
 
-animLoop.addLayer(background);
+animLoop.addLayer(nearBackground);
+animLoop.addLayer(farBackground);
 animLoop.addLayer(foreground);
 animLoop.addLayer(wind);
 //Also, the rest of the resources. Perhaps have as global so any layer can add to it?
