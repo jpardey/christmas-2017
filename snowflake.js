@@ -194,6 +194,7 @@ var BackgroundFlakes = function(size, count) {
     this.spriteCount = 0;
     this.maxSprites = count; //TODO: Again, connect to performance.
     this.lastSprite = -100000;
+    this.addDelay = 250;
 }
 
 BackgroundFlakes.prototype.setup = function(mainLoop){
@@ -211,7 +212,7 @@ BackgroundFlakes.prototype.setup = function(mainLoop){
 
 BackgroundFlakes.prototype.update = function(time, delta){
     var i;
-    if ((this.spriteCount < this.maxSprites) && (this.lastSprite + 250 < time)) {
+    if ((this.spriteCount < this.maxSprites) && (this.lastSprite + this.addDelay < time)) {
         var newSprite = new PIXI.Sprite(this.main.loader.resources["flake"].texture);    
         newSprite.anchor.set(0.5, 1); //Makes math just slightly easier.
         newSprite.x = Math.random()*1024;
@@ -224,13 +225,14 @@ BackgroundFlakes.prototype.update = function(time, delta){
         newSprite.scale.set(scale,scale);
         this.spriteCount++;
         this.lastSprite = time;
+        this.addDelay += (this.spriteCount/this.maxSprites) * 30 * Math.random()
     }
 
 
     var xOffsets = [];
     var yOffsets = [];
     for (i=0; i<10; ++i) {
-        xOffsets[i]=(this.main.wind.v * .40 + 0.60*(Math.random()-Math.random())/40*delta*this.size);
+        xOffsets[i]=(this.main.wind.v * .65 + 0.85*(Math.random()-.5)/40*delta*this.size);
         yOffsets[i]=((Math.random()/50+0.05)*delta*this.size);
     }
     var xloop = Math.floor(Math.random()*5+5); //Will only go to 9 unless random == 1.0, which will almost surely never (probably just never) happen
@@ -259,8 +261,6 @@ BackgroundFlakes.prototype.update = function(time, delta){
     }
 
 }
-
-
 
 var ForegroundFlakes = function() {
     this.flakes = [];
@@ -323,6 +323,83 @@ ForegroundFlakes.prototype.update = function(time,delta){
             this.flakeCount--;
             i--; len--;
         }
+    }
+}
+
+var BendyTree = function(image, x0, y0, w, h) {
+    this.image = image;
+    this.count = 5;
+    this.x0 = x0;
+    this.y0 = y0;
+    this.h = h;
+    this.w = w;
+    var i;
+
+}
+
+BendyTree.prototype.setup = function(main)
+{
+    this.container = new PIXI.Container();
+    this.main = main;
+    this.main.resources[this.image] = "./" + this.image; 
+    return this.container;
+}
+
+BendyTree.prototype.postLoad = function() {
+    this.mesh = new PIXI.mesh.Plane(this.main.loader.resources[this.image].texture, 3, this.count );
+    this.container.addChild(this.mesh);
+    var i;
+    for (i=0; i<this.count; ++i) {
+        this.mesh.vertices[i*6] = this.x0;
+        this.mesh.vertices[i*6+1] = this.y0 + this.h*i/(this.count-1);
+        this.mesh.vertices[i*6+2] = this.x0+this.w/2;
+        this.mesh.vertices[i*6+3] = this.y0 + this.h*i/(this.count-1);
+        this.mesh.vertices[i*6+4] = this.x0+this.w;
+        this.mesh.vertices[i*6+5] = this.y0 + this.h*i/(this.count-1);
+    } 
+}
+
+BendyTree.prototype.update = function (time, delta) {
+    var i;
+    for (i=0; i<this.count; ++i) {
+        this.mesh.vertices[i*6] = this.x0 + (this.count - i-1)*40/(this.count-1)*Math.sin(time/400);
+      //  this.mesh.vertices[i*6+1] = this.y0 + this.h*i/(this.count-1);
+        this.mesh.vertices[i*6+2] = this.x0+this.w/2+ (this.count - i-1)*40/(this.count-1)*Math.sin(time/400);
+      //  this.mesh.vertices[i*6+3] = this.y0 + this.h*i/(this.count-1);
+        this.mesh.vertices[i*6+4] = this.x0+this.w+ (this.count - i-1)*40/(this.count-1)*Math.sin(time/400);
+      //  this.mesh.vertices[i*6+5] = this.y0 + this.h*i/(this.count-1);
+    } 
+}
+
+var Tree = function() {
+    this.delay = 745;
+}
+
+Tree.prototype.setup = function(mainLoop) {
+    this.main = mainLoop;
+    this.container = new PIXI.Container();
+    this.main.resources["treesheet"] = "./treetest.json"
+    this.last = -100000;
+    this.frame = 0;
+    this.frames = ["frame00", "frame01", "frame02"]; //TODO: Make this not be hardcoded, and rip from textures?
+    this.sprite = null;
+    return this.container;
+}
+
+Tree.prototype.postLoad = function() {
+    this.sprite = new PIXI.Sprite(this.main.loader.resources["treesheet"].textures[this.frames[this.frame]]); 
+    this.sprite.x = 500;
+    this.sprite.y = 150;
+    this.container.addChild(this.sprite);
+
+}
+
+Tree.prototype.update = function (time, delta) {
+    var textures = this.main.loader.resources["treesheet"].textures;
+    if (this.last + this.delay < time ) {
+        this.frame = (this.frame + 1)%this.frames.length;
+        this.sprite.setTexture( textures[this.frames[this.frame]]);
+        this.last = time;
     }
 }
 
@@ -411,6 +488,20 @@ MainAnimLoop.prototype.start = function() {
 }
 
 MainAnimLoop.prototype.load = function(andStart) {
+    var that=this;
+    var postLoad = function() {
+        console.log("Postload function")
+        that.realtime = Date.now();
+        var i;
+        for (i=0; i<that.layers.length; ++i) {
+            console.log(that.layers[i])
+            if ("postLoad" in that.layers[i]) {
+                that.layers[i].postLoad.call(that.layers[i]);
+            }
+        }
+        that.loaded = true;
+        that.ticker.start();
+    }
     var key;
     var value;
     var isThereStuff = false;
@@ -422,22 +513,17 @@ MainAnimLoop.prototype.load = function(andStart) {
         }
     } 
     if (isThereStuff) {
-        var that = this;
-        this.loader.load(function() {
-            this.realtime = Date.now();
-            that.loaded = true;
-            that.ticker.start();
-        });
-        this.loader.onError.add(function() {
+        this.loader.load(postLoad);
+        this.loader.onError.add(function(error) {
             console.log("error...");
+            console.log(error);
         })
     }
     else {
-        this.realtime = Date.now();
-        this.loaded=true;
-        this.ticker.start();
+        postLoad(true);
     }
 }
+
 
 MainAnimLoop.prototype.stop = function() {
     this.ticker.stop();
@@ -459,13 +545,16 @@ MainAnimLoop.prototype.update = function() {
 var animLoop = new MainAnimLoop();
 var foreground = new ForegroundFlakes();
 var nearBackground = new BackgroundFlakes(1.0,50);
-var farBackground = new BackgroundFlakes(0.5,150);
+var farBackground = new BackgroundFlakes(0.5,100);
+var tree = new Tree();
 var wind = new Wind("wind");
-
+var bendyTree = new BendyTree("bendytree.png", 200, 100, 150, 300);
 //var loader = new PIXI.loaders.Loader();
 
-animLoop.addLayer(nearBackground);
 animLoop.addLayer(farBackground);
+animLoop.addLayer(bendyTree);
+animLoop.addLayer(tree);
+animLoop.addLayer(nearBackground);
 animLoop.addLayer(foreground);
 animLoop.addLayer(wind);
 //Also, the rest of the resources. Perhaps have as global so any layer can add to it?
