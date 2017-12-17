@@ -548,11 +548,11 @@ var nearBackground = new BackgroundFlakes(1.0,50);
 var farBackground = new BackgroundFlakes(0.5,100);
 var tree = new Tree();
 var wind = new Wind("wind");
-var bendyTree = new BendyTree("bendytree.png", 200, 100, 150, 300);
+//var bendyTree = new BendyTree("bendytree.png", 200, 100, 150, 300);
 //var loader = new PIXI.loaders.Loader();
 
 animLoop.addLayer(farBackground);
-animLoop.addLayer(bendyTree);
+//animLoop.addLayer(bendyTree);
 animLoop.addLayer(tree);
 animLoop.addLayer(nearBackground);
 animLoop.addLayer(foreground);
