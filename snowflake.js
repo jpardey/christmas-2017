@@ -210,18 +210,43 @@ BackgroundFlakes.prototype.setup = function(mainLoop){
     return this.container;
 }
 
+BackgroundFlakes.prototype.resize = function() {
+    
+    var i;  
+    var s;
+    var sizeFactor;
+    var newScale;
+    var scaleFactor = this.main.globalScale / this.main.lastScale;
+    var widthFactor = this.main.width / this.main.lastWidth;
+    var heightFactor = this.main.height / this.main.lastHeight;
+    for (i=0; i<this.spriteCount; ++i){
+        //Change the scale
+        s = this.flakeSprites[i]; 
+        sizeFactor = this.main.globalScale/s.origGlobalScale;
+        newScale = sizeFactor * s.origScale;
+        s.scale.set(newScale,newScale);
+        this.xs[i] *= widthFactor;  //Move the sprites around based on new size
+        this.ys[i] *= heightFactor; 
+        s.x = this.xs[i]; //TODO: This is gross, but perhaps find a way to do this better as far as interacting parts
+        s.y = this.ys[i];
+    }
+
+}
+
 BackgroundFlakes.prototype.update = function(time, delta){
     var i;
     if ((this.spriteCount < this.maxSprites) && (this.lastSprite + this.addDelay < time)) {
         var newSprite = new PIXI.Sprite(this.main.loader.resources["flake"].texture);    
         newSprite.anchor.set(0.5, 1); //Makes math just slightly easier.
-        newSprite.x = Math.random()*1024;
+        newSprite.x = Math.random()*this.main.width;
         newSprite.y = 0;
         this.flakeSprites.push(newSprite);
         this.container.addChild(newSprite);
         this.xs.push(newSprite.x);
         this.ys.push(newSprite.y);
-        var scale =this.size * (Math.random()*.25 + .75);
+        var scale = this.size * (Math.random()*.25 + .75);
+        newSprite.origScale = scale;
+        newSprite.origGlobalScale = this.main.globalScale;
         newSprite.scale.set(scale,scale);
         this.spriteCount++;
         this.lastSprite = time;
@@ -231,27 +256,30 @@ BackgroundFlakes.prototype.update = function(time, delta){
 
     var xOffsets = [];
     var yOffsets = [];
-    var sizeDeltaScale = this.size*delta*this.mainLoop.scale;
+    var sizeDeltaScale = this.size*delta*this.main.globalScale;
     for (i=0; i<10; ++i) {
-        xOffsets[i]=(this.main.wind.v * .65 + 0.85*(Math.random()-.5)/40*delta*this.size);
-        yOffsets[i]=((Math.random()/50+0.05)*delta*this.size);
+        xOffsets[i]=(this.main.wind.v * .65 + 0.85*(Math.random()-.5)/40*sizeDeltaScale);
+        yOffsets[i]=((Math.random()/50+0.05)*sizeDeltaScale);
     }
     var xloop = Math.floor(Math.random()*5+5); //Will only go to 9 unless random == 1.0, which will almost surely never (probably just never) happen
     var yloop = Math.floor(Math.random()*6+5);
-    var bottomEdge = Math.ceil(this.height+16*scale);
+    var bottomEdge = Math.ceil(this.main.height+20*this.main.globalScale);
+    var rightEdge = Math.ceil(this.main.width+20*this.main.globalScale);
+    var leftEdge = -Math.ceil(this.main.globalScale*20);
+    var loopDistance = Math.ceil(this.main.width+30*this.main.globalScale);
     //Seperating in hopes of greater efficiency
     for (i=0; i<this.spriteCount; ++i) {
         this.ys[i] += yOffsets[i%yloop];
     }
     for (i=0; i<this.spriteCount; ++i) {
         if (this.ys[i]>bottomEdge) {
-            this.ys[i] = 0;
-            this.xs[i] = Math.random()*this.width;
+            this.ys[i] -= bottomEdge; //This isn't perfect...
+            this.xs[i] = Math.random()*this.main.width;
         }
     }
     for (i=0; i<this.spriteCount; ++i) {
-        if (this.xs[i]> this.width+20*scale) {this.xs[i] = -10;}
-        if (this.xs[i]< -20) {this.xs[i] = 1024+10;}
+        if (this.xs[i]> rightEdge) {this.xs[i] -= loopDistance;}
+        if (this.xs[i]< leftEdge) {this.xs[i] += loopDistance;}
     }
 
     for (i=0; i<this.spriteCount; ++i) {
@@ -271,6 +299,28 @@ var ForegroundFlakes = function() {
     this.maxFlakes = 10; //TODO: Connect to performance of system. Gobal settings and performance module?
 }
 
+ForegroundFlakes.prototype.resize = function() {
+    var i;
+    var s;
+    var scaleFactor = this.main.globalScale/this.main.lastScale;
+    var widthFactor = this.main.width / this.main.lastWidth;
+    var heightFactor = this.main.height / this.main.lastHeight;
+    var newScale;
+    var sizeFactor;
+    for(i=0; i<this.flakes.length; ++i) {
+        //This is a mess, but it's the 18th of December
+        s = this.flakes[i];
+        s.x *= widthFactor;
+        s.y *= heightFactor;
+        sizeFactor = this.main.globalScale/s.origGlobalScale;
+        s.size = s.origSize*sizeFactor;
+        newScale = sizeFactor;
+        s.scale.set(newScale,newScale);
+        console.log(newScale);
+        s.anchor.set(0.5,0.5)
+    }
+}
+
 ForegroundFlakes.prototype.setup = function(mainLoop) {
     this.main = mainLoop;
     this.time = Date.now();
@@ -282,8 +332,8 @@ ForegroundFlakes.prototype.update = function(time,delta){
     var i;
     if ((this.flakeCount < this.maxFlakes) && (this.lastFlake + 1500 < time)) {
         var dist = ((2*Math.random())+1);
-        var size = 300/dist; //TODO: Better size picking function?
-            //This will range between 256/3 and 256 px with a nice reciprocal slope. Should reflect flakes in a range of spaces.
+        var size = Math.round(this.main.globalScale*300/dist); //TODO: Better size picking function?
+            //This will range between 100/3 and 300 px with a nice reciprocal slope. Should reflect flakes in a range of spaces.
         //Now, find the index of the next smallest one to replace in the ordering, ordering larger to smaller
         for (i=0; i<this.flakes.length; ++i) {
             if (size < this.flakes[i].size) {
@@ -293,9 +343,11 @@ ForegroundFlakes.prototype.update = function(time,delta){
         var canvas = canvasDraw(size, dist);
         var newSprite = spriteFromCanvas(canvas); 
         delete canvas; //This probably won't help anything, but worth a shot.
-        newSprite.x = Math.random()*1024; //TODO: Width param in global
+        newSprite.x = Math.random()*this.main.width; //TODO: Width param in global
         newSprite.y = -size/2;
+        newSprite.origGlobalScale = this.main.globalScale;
         newSprite.size = size;
+        newSprite.origSize = size;
         newSprite.rotation = 2*Math.PI*Math.random();
         newSprite.dTheta = (Math.random()-.5); //Angle to rotate per some time quantity.
         newSprite.anchor.set(0.5, 0.5);
@@ -309,15 +361,17 @@ ForegroundFlakes.prototype.update = function(time,delta){
     }
 
     var len = this.flakes.length;
+    // Update the position of the flakes on the screen
     for (i=0; i<len; ++i){
-        this.flakes[i].x += (0.8*this.main.wind.v + 0.2*this.flakes[i].windBias)*this.flakes[i].size * delta/1000 //Avg 1/2 flake width per second?
-        this.flakes[i].y += (this.flakes[i].size*this.flakes[i].fallSpeed)*delta/1500; 
-        this.flakes[i].rotation += this.flakes[i].dTheta*delta/1000;
+        this.flakes[i].x // += (0.8*this.main.wind.v + 0.2*this.flakes[i].windBias)*this.flakes[i].size * delta/1000 //Avg 1/2 flake width per second?
+        this.flakes[i].y += 0.3*(this.flakes[i].size*this.flakes[i].fallSpeed)*delta/1500; 
+        this.flakes[i].rotation += this.flakes[i].dTheta*delta/1500;
     }
+    // Bounds checking
     for (i=0; i<len; ++i){
-        if (this.flakes[i].x < -this.flakes[i].size ){this.flakes[i].x = 1024 + this.flakes[i].size/2} 
-        else if (this.flakes[i].x >1024 + this.flakes[i].size ) {this.flakes[i].x = -this.flakes[i].size/2} //wraparound
-        else if (this.flakes[i].y > 512 + this.flakes[i].size/2) {  //Delete offscreen flake
+        if (this.flakes[i].x < -this.flakes[i].size ){this.flakes[i].x += this.main.width + 1.5*this.flakes[i].size} 
+        else if (this.flakes[i].x > this.main.width + this.flakes[i].size ) {this.flakes[i].x -= this.main.width + 1.5*this.flakes[i].size}
+        else if (this.flakes[i].y > this.main.height + this.flakes[i].size/2) {  //Delete offscreen flake
             var oldFlake = this.container.removeChildAt(i)
             oldFlake.destroy({children:true, texture:true, baseTexture:true});
             this.flakes[i] = null;
@@ -438,7 +492,7 @@ Wind.prototype.update = function(time, delta) {
         this.v1 = this.v2;
         this.x2 = WindTimeGen();
         this.v2 = WindValGen();
-        console.log(this.v2);
+        //console.log(this.v2);
     }
 
     var t = time - this.basetime; 
@@ -462,13 +516,13 @@ var MainAnimLoop = function() {
     this.frameDiv = document.getElementById("framecount");
     this.time = 0;
     this.realtime = 0;
-    this.sizeFactor = 1.0; //TODO: Make user adjustable, triggering resize
+    this.resolutionFactor = 1.0; //TODO: Make user adjustable, triggering resize
     //This is pretty gross. Should be handled a bit more in a DI way, but good enough for now.
     //May need to be changed if there's an intro
     this.renderer = PIXI.autoDetectRenderer(1024,512); //Will be changed by resize
     document.getElementById("graphicsSpace").appendChild(this.renderer.view);
     this.stage = new PIXI.Container();
-    this.resize();
+    this.resize(true);
 }
 
 //Add layers. Must be added back to front. Might add a addLayerAt method if needed.
@@ -495,11 +549,11 @@ MainAnimLoop.prototype.load = function(andStart) {
     //TODO: Make andStart work?
     var that=this;
     var postLoad = function() { //This will be called, as you'd expect, after everything's been loaded
-        console.log("Postload function")
+        //console.log("Postload function")
         that.realtime = Date.now();
         var i;
         for (i=0; i<that.layers.length; ++i) {
-            console.log(that.layers[i])
+            //console.log(that.layers[i])
             if ("postLoad" in that.layers[i]) {
                 that.layers[i].postLoad.call(that.layers[i]);
             }
@@ -534,7 +588,7 @@ MainAnimLoop.prototype.stop = function() {
     this.ticker.stop();
 }
 
-MainAnimLoop.prototype.resize = function() {
+MainAnimLoop.prototype.resize = function(first) {
     var minR = 1.0;
     var maxR = 2.0; //Based on background image applicable regions.
     var referenceWidth = 1024;
@@ -552,40 +606,43 @@ MainAnimLoop.prototype.resize = function() {
         width = vW;
         height = vH;
         scale = height/referenceHeight;
-        console.log("Ratio: " +vR)
-        console.log("Middle");
     }
     else if (vR < minR) {
         width = vW; 
         height = vW; //Force square if too narrow
-        scale = width/referenceWidth;
-        console.log("Ratio: " +vR)
-        console.log("Narrow");
+        scale = height/referenceHeight;
     }
     else { //vR > minR
         height = vH;
         width = 2*vH;
         scale = width/referenceWidth;
-        console.log("Ratio: " +vR)
-        console.log("Wide");
     }
 
     this.divWidth = Math.round(width);
     this.divHeight = Math.round(height);
 
-    this.width = Math.round(this.sizeFactor*width);
-    this.height = Math.round(this.sizeFactor*height);
+    this.width = Math.round(this.resolutionFactor*width);
+    this.height = Math.round(this.resolutionFactor*height);
 
     this.renderer.view.style.width = this.divWidth+"px";
     this.renderer.view.style.height = this.divHeight+"px";
     this.renderer.resize(this.width, this.height);
 
     this.globalScale = scale;
+    if (first) { //Set to init value if first time through
+        this.lastScale=this.globalScale; 
+        this.lastWidth = this.width;
+        this.lastHeight = this.height;
+    }
 
     var i;
     for (i=0; i<this.layers.length; ++i) {
-        if ("resize" in this.layers[i]) {this.layers[i].resize.call(this.layers[i]);}
+        if ("resize" in this.layers[i]) {this.layers[i].resize.call(this.layers[i], first);}
     }
+
+    this.lastScale=this.globalScale; //Done resizing
+    this.lastWidth = this.width;
+    this.lastHeight = this.height;
     
 }
 
@@ -616,6 +673,23 @@ animLoop.addLayer(foreground);
 //TODO: add background image
 animLoop.addLayer(wind);
 animLoop.start();
+
+var waitThenResize = (function() {
+    var timeoutID = false;
+
+    var inner = function() {
+        if (timeoutID !== false) {return;}
+        timeoutID = window.setTimeout(function() 
+        {   
+            timeoutID = false;
+            animLoop.resize(false);
+        }, 500);
+    }
+
+    return inner;
+}) ();
+
+window.addEventListener("resize", waitThenResize);
 
 //testDraw(genSnowflakeMesh());
 
