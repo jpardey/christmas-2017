@@ -273,7 +273,7 @@ BackgroundFlakes.prototype.update = function(time, delta){
     }
     for (i=0; i<this.spriteCount; ++i) {
         if (this.ys[i]>bottomEdge) {
-            this.ys[i] -= bottomEdge; //This isn't perfect...
+            this.ys[i] -= bottomEdge + (1+Math.random())*this.main.globalScale*10; //This isn't perfect...
             this.xs[i] = Math.random()*this.main.width;
         }
     }
@@ -332,8 +332,8 @@ ForegroundFlakes.prototype.update = function(time,delta){
     var i;
     if ((this.flakeCount < this.maxFlakes) && (this.lastFlake + 1500 < time)) {
         var dist = ((2*Math.random())+1);
-        var size = Math.round(this.main.globalScale*300/dist); //TODO: Better size picking function?
-            //This will range between 100/3 and 300 px with a nice reciprocal slope. Should reflect flakes in a range of spaces.
+        var size = Math.round(this.main.globalScale*225/dist); //TODO: Better size picking function?
+
         //Now, find the index of the next smallest one to replace in the ordering, ordering larger to smaller
         for (i=0; i<this.flakes.length; ++i) {
             if (size < this.flakes[i].size) {
@@ -363,8 +363,8 @@ ForegroundFlakes.prototype.update = function(time,delta){
     var len = this.flakes.length;
     // Update the position of the flakes on the screen
     for (i=0; i<len; ++i){
-        this.flakes[i].x // += (0.8*this.main.wind.v + 0.2*this.flakes[i].windBias)*this.flakes[i].size * delta/1000 //Avg 1/2 flake width per second?
-        this.flakes[i].y += 0.3*(this.flakes[i].size*this.flakes[i].fallSpeed)*delta/1500; 
+        this.flakes[i].x  += (0.8*this.main.wind.v + 0.2*this.flakes[i].windBias)*this.flakes[i].size * delta/1000 //Avg 1/2 flake width per second?
+        this.flakes[i].y += (this.flakes[i].size*this.flakes[i].fallSpeed)*delta/1500; 
         this.flakes[i].rotation += this.flakes[i].dTheta*delta/1500;
     }
     // Bounds checking
