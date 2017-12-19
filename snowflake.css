@@ -1,0 +1,17 @@
+body {
+margin: 0px;
+padding: 0px;
+}
+
+html {
+margin: 0px;
+padding: 0px;
+}
+
+#graphicsSpace {
+margin: 0px;
+padding-left: auto;
+padding-right: auto;
+padding-top:0;
+padding-bottom:0;
+}

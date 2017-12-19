@@ -231,24 +231,26 @@ BackgroundFlakes.prototype.update = function(time, delta){
 
     var xOffsets = [];
     var yOffsets = [];
+    var sizeDeltaScale = this.size*delta*this.mainLoop.scale;
     for (i=0; i<10; ++i) {
         xOffsets[i]=(this.main.wind.v * .65 + 0.85*(Math.random()-.5)/40*delta*this.size);
         yOffsets[i]=((Math.random()/50+0.05)*delta*this.size);
     }
     var xloop = Math.floor(Math.random()*5+5); //Will only go to 9 unless random == 1.0, which will almost surely never (probably just never) happen
     var yloop = Math.floor(Math.random()*6+5);
+    var bottomEdge = Math.ceil(this.height+16*scale);
     //Seperating in hopes of greater efficiency
     for (i=0; i<this.spriteCount; ++i) {
         this.ys[i] += yOffsets[i%yloop];
     }
     for (i=0; i<this.spriteCount; ++i) {
-        if (this.ys[i]>512+16) {
+        if (this.ys[i]>bottomEdge) {
             this.ys[i] = 0;
-            this.xs[i] = Math.random()*1024;
+            this.xs[i] = Math.random()*this.width;
         }
     }
     for (i=0; i<this.spriteCount; ++i) {
-        if (this.xs[i]> 1024+20) {this.xs[i] = -10;}
+        if (this.xs[i]> this.width+20*scale) {this.xs[i] = -10;}
         if (this.xs[i]< -20) {this.xs[i] = 1024+10;}
     }
 
@@ -314,8 +316,8 @@ ForegroundFlakes.prototype.update = function(time,delta){
     }
     for (i=0; i<len; ++i){
         if (this.flakes[i].x < -this.flakes[i].size ){this.flakes[i].x = 1024 + this.flakes[i].size/2} 
-        else if (this.flakes[i].x >1024 + this.flakes[i].size ) {this.flakes[i].x = -this.flakes[i].size/2}
-        else if (this.flakes[i].y > 512 + this.flakes[i].size/2) {
+        else if (this.flakes[i].x >1024 + this.flakes[i].size ) {this.flakes[i].x = -this.flakes[i].size/2} //wraparound
+        else if (this.flakes[i].y > 512 + this.flakes[i].size/2) {  //Delete offscreen flake
             var oldFlake = this.container.removeChildAt(i)
             oldFlake.destroy({children:true, texture:true, baseTexture:true});
             this.flakes[i] = null;
@@ -326,6 +328,7 @@ ForegroundFlakes.prototype.update = function(time,delta){
     }
 }
 
+//TODO: Delete. There will be no trees swaying in the wind
 var BendyTree = function(image, x0, y0, w, h) {
     this.image = image;
     this.count = 5;
@@ -363,11 +366,8 @@ BendyTree.prototype.update = function (time, delta) {
     var i;
     for (i=0; i<this.count; ++i) {
         this.mesh.vertices[i*6] = this.x0 + (this.count - i-1)*40/(this.count-1)*Math.sin(time/400);
-      //  this.mesh.vertices[i*6+1] = this.y0 + this.h*i/(this.count-1);
         this.mesh.vertices[i*6+2] = this.x0+this.w/2+ (this.count - i-1)*40/(this.count-1)*Math.sin(time/400);
-      //  this.mesh.vertices[i*6+3] = this.y0 + this.h*i/(this.count-1);
         this.mesh.vertices[i*6+4] = this.x0+this.w+ (this.count - i-1)*40/(this.count-1)*Math.sin(time/400);
-      //  this.mesh.vertices[i*6+5] = this.y0 + this.h*i/(this.count-1);
     } 
 }
 
@@ -375,6 +375,7 @@ var Tree = function() {
     this.delay = 745;
 }
 
+//TODO: Just have sprites, since looping is kind of unimportant?
 Tree.prototype.setup = function(mainLoop) {
     this.main = mainLoop;
     this.container = new PIXI.Container();
@@ -461,11 +462,13 @@ var MainAnimLoop = function() {
     this.frameDiv = document.getElementById("framecount");
     this.time = 0;
     this.realtime = 0;
+    this.sizeFactor = 1.0; //TODO: Make user adjustable, triggering resize
     //This is pretty gross. Should be handled a bit more in a DI way, but good enough for now.
     //May need to be changed if there's an intro
-    this.renderer = PIXI.autoDetectRenderer(1024,512);
+    this.renderer = PIXI.autoDetectRenderer(1024,512); //Will be changed by resize
     document.getElementById("graphicsSpace").appendChild(this.renderer.view);
     this.stage = new PIXI.Container();
+    this.resize();
 }
 
 //Add layers. Must be added back to front. Might add a addLayerAt method if needed.
@@ -487,9 +490,11 @@ MainAnimLoop.prototype.start = function() {
     }
 }
 
+
 MainAnimLoop.prototype.load = function(andStart) {
+    //TODO: Make andStart work?
     var that=this;
-    var postLoad = function() {
+    var postLoad = function() { //This will be called, as you'd expect, after everything's been loaded
         console.log("Postload function")
         that.realtime = Date.now();
         var i;
@@ -529,6 +534,61 @@ MainAnimLoop.prototype.stop = function() {
     this.ticker.stop();
 }
 
+MainAnimLoop.prototype.resize = function() {
+    var minR = 1.0;
+    var maxR = 2.0; //Based on background image applicable regions.
+    var referenceWidth = 1024;
+    var referenceHeight = 512;
+    //Get view width and height
+    var vW = document.documentElement.clientWidth;
+    var vH = document.documentElement.clientHeight;
+
+    //What aspect ratio would this give us, if we went full?
+    var vR = vW/vH;
+
+    var scale,width,height;
+    //Scale is based on unaffected coord of bg image
+    if (minR <= vR && vR <= maxR) {
+        width = vW;
+        height = vH;
+        scale = height/referenceHeight;
+        console.log("Ratio: " +vR)
+        console.log("Middle");
+    }
+    else if (vR < minR) {
+        width = vW; 
+        height = vW; //Force square if too narrow
+        scale = width/referenceWidth;
+        console.log("Ratio: " +vR)
+        console.log("Narrow");
+    }
+    else { //vR > minR
+        height = vH;
+        width = 2*vH;
+        scale = width/referenceWidth;
+        console.log("Ratio: " +vR)
+        console.log("Wide");
+    }
+
+    this.divWidth = Math.round(width);
+    this.divHeight = Math.round(height);
+
+    this.width = Math.round(this.sizeFactor*width);
+    this.height = Math.round(this.sizeFactor*height);
+
+    this.renderer.view.style.width = this.divWidth+"px";
+    this.renderer.view.style.height = this.divHeight+"px";
+    this.renderer.resize(this.width, this.height);
+
+    this.globalScale = scale;
+
+    var i;
+    for (i=0; i<this.layers.length; ++i) {
+        if ("resize" in this.layers[i]) {this.layers[i].resize.call(this.layers[i]);}
+    }
+    
+}
+
 MainAnimLoop.prototype.update = function() {
     var time = Date.now();
     var delta = time - this.realtime;
@@ -544,24 +604,18 @@ MainAnimLoop.prototype.update = function() {
 
 var animLoop = new MainAnimLoop();
 var foreground = new ForegroundFlakes();
-var nearBackground = new BackgroundFlakes(1.0,50);
+var nearBackground = new BackgroundFlakes(1.0,50); //TODO: Just set up a single background flake layer with its own depth. Should be speedy enough
 var farBackground = new BackgroundFlakes(0.5,100);
-var tree = new Tree();
+//var tree = new Tree();
 var wind = new Wind("wind");
-//var bendyTree = new BendyTree("bendytree.png", 200, 100, 150, 300);
-//var loader = new PIXI.loaders.Loader();
 
 animLoop.addLayer(farBackground);
-//animLoop.addLayer(bendyTree);
-animLoop.addLayer(tree);
+//animLoop.addLayer(tree);
 animLoop.addLayer(nearBackground);
 animLoop.addLayer(foreground);
+//TODO: add background image
 animLoop.addLayer(wind);
-//Also, the rest of the resources. Perhaps have as global so any layer can add to it?
 animLoop.start();
-
-//animLoop();
-
 
 //testDraw(genSnowflakeMesh());
 
