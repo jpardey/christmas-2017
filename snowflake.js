@@ -216,7 +216,6 @@ BackgroundFlakes.prototype.resize = function() {
     var s;
     var sizeFactor;
     var newScale;
-    var scaleFactor = this.main.globalScale / this.main.lastScale;
     var widthFactor = this.main.width / this.main.lastWidth;
     var heightFactor = this.main.height / this.main.lastHeight;
     for (i=0; i<this.spriteCount; ++i){
@@ -244,7 +243,7 @@ BackgroundFlakes.prototype.update = function(time, delta){
         this.container.addChild(newSprite);
         this.xs.push(newSprite.x);
         this.ys.push(newSprite.y);
-        var scale = this.size * (Math.random()*.25 + .75);
+        var scale = this.main.globalScale*this.size * (Math.random()*.25 + .75);
         newSprite.origScale = scale;
         newSprite.origGlobalScale = this.main.globalScale;
         newSprite.scale.set(scale,scale);
@@ -316,7 +315,7 @@ ForegroundFlakes.prototype.resize = function() {
         s.size = s.origSize*sizeFactor;
         newScale = sizeFactor;
         s.scale.set(newScale,newScale);
-        console.log(newScale);
+        //console.log(newScale);
         s.anchor.set(0.5,0.5)
     }
 }
@@ -504,6 +503,61 @@ Wind.prototype.update = function(time, delta) {
                 this.v2 * (t)/(t2) * (t-t1)/(t2-t1)
 
 }
+
+var BackgroundImage = function(name,image) {
+    this.image = image;
+    this.key=name;
+    this.height=512; //Temp values to preserve sanity
+    this.width = 1024;
+}
+
+BackgroundImage.prototype.setup=function(mainLoop) {
+    this.main = mainLoop
+    mainLoop.resources[this.key] = this.image; 
+    mainLoop[this.key] = this; //Reference to BG image for position dependent layers
+    this.container = new PIXI.Container();
+    return this.container;
+}
+
+BackgroundImage.prototype.postLoad = function() {
+    var texture = this.main.loader.resources[this.key].texture;
+    this.bgimg = new PIXI.Sprite(texture);
+    this.container.addChild(this.bgimg);
+    this.tWidth = texture.width;
+    this.tHeight = texture.height;
+}
+
+BackgroundImage.prototype.resize = function() {
+    var scale = this.getScale();
+    this.bgimg.scale.set(scale,scale);
+    this.bgimg.x = this.getScreenX(0);
+    this.bgimg.y = this.getScreenY(0);
+    console.log(this.bgimg.x);
+    console.log(scale);
+}
+
+//Efficiency isn't paramount here. Could cache these things after resize,
+//but that could cause some TOU issues with the way things are dispatched,
+//and really isn't very useful since these are only called during resize.
+BackgroundImage.prototype.getScale = function() {
+    var wF = this.main.width/this.tWidth;
+    var hF = this.main.height/this.tHeight;
+    return Math.max(wF, hF);
+}
+
+BackgroundImage.prototype.getScreenX = function (x) {
+    var scale = this.getScale();
+    var ratio = this.main.width/this.main.height;
+    //r = 2: 0 offset.
+    //r = 1: -this.main.width/2
+    console.log(ratio);
+    return x*scale + (ratio-2)*this.main.height;
+}
+
+BackgroundImage.prototype.getScreenY = function (y) {
+    var scale = this.getScale();
+    return y*scale;
+}
     
 var MainAnimLoop = function() {
     this.loader = new PIXI.loaders.Loader();
@@ -654,7 +708,9 @@ MainAnimLoop.prototype.update = function() {
     this.realtime = time;
     var i;
     for (i=0; i<this.layers.length; ++i) {
-        this.layers[i].update.call(this.layers[i], this.time,delta);
+        if ("update" in this.layers[i]) {
+            this.layers[i].update.call(this.layers[i], this.time,delta);
+        }
     }
     this.renderer.render(this.stage);
 }
@@ -665,7 +721,9 @@ var nearBackground = new BackgroundFlakes(1.0,50); //TODO: Just set up a single 
 var farBackground = new BackgroundFlakes(0.5,100);
 //var tree = new Tree();
 var wind = new Wind("wind");
+var backdrop = new BackgroundImage("backdrop","backdrop.png");
 
+animLoop.addLayer(backdrop);
 animLoop.addLayer(farBackground);
 //animLoop.addLayer(tree);
 animLoop.addLayer(nearBackground);
