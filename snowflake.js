@@ -716,7 +716,7 @@ var farBackground = new BackgroundFlakes(0.5,100);
 //var tree = new Tree();
 var wind = new Wind("wind");
 var backdrop = new BackgroundImage("backdrop","backdrop.png");
-var lights = new FlickeryLights([[1035,655,18],[781,736,12]],"lights", "light.png");
+var lights = new FlickeryLights(lightArray,"lights", "light.png");
 
 animLoop.addLayer(backdrop);
 animLoop.addLayer(lights);
