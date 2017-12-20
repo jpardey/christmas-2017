@@ -206,7 +206,7 @@ BackgroundFlakes.prototype.setup = function(mainLoop){
         uvs:false,
         alpha:true
     });
-    mainLoop.resources["flake"] = "./flake16.png";
+    mainLoop.resources["flake"] = "flake16.png";
     return this.container;
 }
 
@@ -258,7 +258,7 @@ BackgroundFlakes.prototype.update = function(time, delta){
     var sizeDeltaScale = this.size*delta*this.main.globalScale;
     for (i=0; i<10; ++i) {
         xOffsets[i]=(this.main.wind.v * .65 + 0.85*(Math.random()-.5)/40*sizeDeltaScale);
-        yOffsets[i]=((Math.random()/50+0.05)*sizeDeltaScale);
+        yOffsets[i]=((Math.random()/50+0.04)*sizeDeltaScale);
     }
     var xloop = Math.floor(Math.random()*5+5); //Will only go to 9 unless random == 1.0, which will almost surely never (probably just never) happen
     var yloop = Math.floor(Math.random()*6+5);
@@ -381,82 +381,6 @@ ForegroundFlakes.prototype.update = function(time,delta){
     }
 }
 
-//TODO: Delete. There will be no trees swaying in the wind
-var BendyTree = function(image, x0, y0, w, h) {
-    this.image = image;
-    this.count = 5;
-    this.x0 = x0;
-    this.y0 = y0;
-    this.h = h;
-    this.w = w;
-    var i;
-
-}
-
-BendyTree.prototype.setup = function(main)
-{
-    this.container = new PIXI.Container();
-    this.main = main;
-    this.main.resources[this.image] = "./" + this.image; 
-    return this.container;
-}
-
-BendyTree.prototype.postLoad = function() {
-    this.mesh = new PIXI.mesh.Plane(this.main.loader.resources[this.image].texture, 3, this.count );
-    this.container.addChild(this.mesh);
-    var i;
-    for (i=0; i<this.count; ++i) {
-        this.mesh.vertices[i*6] = this.x0;
-        this.mesh.vertices[i*6+1] = this.y0 + this.h*i/(this.count-1);
-        this.mesh.vertices[i*6+2] = this.x0+this.w/2;
-        this.mesh.vertices[i*6+3] = this.y0 + this.h*i/(this.count-1);
-        this.mesh.vertices[i*6+4] = this.x0+this.w;
-        this.mesh.vertices[i*6+5] = this.y0 + this.h*i/(this.count-1);
-    } 
-}
-
-BendyTree.prototype.update = function (time, delta) {
-    var i;
-    for (i=0; i<this.count; ++i) {
-        this.mesh.vertices[i*6] = this.x0 + (this.count - i-1)*40/(this.count-1)*Math.sin(time/400);
-        this.mesh.vertices[i*6+2] = this.x0+this.w/2+ (this.count - i-1)*40/(this.count-1)*Math.sin(time/400);
-        this.mesh.vertices[i*6+4] = this.x0+this.w+ (this.count - i-1)*40/(this.count-1)*Math.sin(time/400);
-    } 
-}
-
-var Tree = function() {
-    this.delay = 745;
-}
-
-//TODO: Just have sprites, since looping is kind of unimportant?
-Tree.prototype.setup = function(mainLoop) {
-    this.main = mainLoop;
-    this.container = new PIXI.Container();
-    this.main.resources["treesheet"] = "./treetest.json"
-    this.last = -100000;
-    this.frame = 0;
-    this.frames = ["frame00", "frame01", "frame02"]; //TODO: Make this not be hardcoded, and rip from textures?
-    this.sprite = null;
-    return this.container;
-}
-
-Tree.prototype.postLoad = function() {
-    this.sprite = new PIXI.Sprite(this.main.loader.resources["treesheet"].textures[this.frames[this.frame]]); 
-    this.sprite.x = 500;
-    this.sprite.y = 150;
-    this.container.addChild(this.sprite);
-
-}
-
-Tree.prototype.update = function (time, delta) {
-    var textures = this.main.loader.resources["treesheet"].textures;
-    if (this.last + this.delay < time ) {
-        this.frame = (this.frame + 1)%this.frames.length;
-        this.sprite.setTexture( textures[this.frames[this.frame]]);
-        this.last = time;
-    }
-}
-
 var WindValGen = function() {
     return (sq(Math.random())-0.75)/0.75;  //Squaring to bias towards negatives, while allowing some rightward breezes
 }
@@ -558,6 +482,76 @@ BackgroundImage.prototype.getScreenY = function (y) {
     var scale = this.getScale();
     return y*scale;
 }
+
+var FlickeryLights = function(lights, key, texture) {
+    this.lightsData = lights; //Array of [x,y,size] relative to bg image 
+    this.textureName = key;
+    this.texture = texture;
+}
+
+FlickeryLights.prototype.setup = function(mainLoop) {
+    this.main = mainLoop;
+    //backdrop may not be installed at this point
+    this.container = new PIXI.particles.ParticleContainer(1000, {
+        scale: true,
+        position:true,
+        rotation:false,
+        uvs:false,
+        alpha:true
+    });
+    var i;
+    this.lights = [];
+    this.colours = [0xFF0000,0xD5BE00,0x00FF00,0x0000FF, 0xFF00FF,0xFF7e00,0xFFFFFF];
+    mainLoop.resources[this.textureName] = this.texture;
+
+    return this.container;
+}
+
+FlickeryLights.prototype.postLoad = function () {
+    var i;
+    var sprite;
+    for (i=0; i<this.lightsData.length; ++i) {
+        sprite = new PIXI.Sprite(this.main.loader.resources[this.textureName].texture);
+        this.lights.push(sprite);
+        this.container.addChild(sprite);
+        this.changeColour(i);
+    }
+    this.setupSizeScale();
+}
+
+FlickeryLights.prototype.setupSizeScale = function(i) {
+    var sprite;
+    var size;
+    for (i=0; i<this.lights.length; ++i) {
+        sprite = this.lights[i];
+        size = this.main.backdrop.getScale()*this.lightsData[i][2];
+        sprite.width = size;
+        sprite.height = size;
+        sprite.anchor.set(0.5,0.5);
+        sprite.x = this.main.backdrop.getScreenX(this.lightsData[i][0]);
+        sprite.y = this.main.backdrop.getScreenY(this.lightsData[i][1]);
+        sprite.nextChange = -1000;
+        console.log(sprite.x,sprite.y,sprite.width);
+    }
+}
+
+FlickeryLights.prototype.changeColour = function (i) {
+    var j = Math.floor(Math.random()*this.colours.length);
+    this.lights[i].tint = this.colours[j];
+}
+
+FlickeryLights.prototype.update = function(time, delta) {
+    for (i=0; i<this.lights.length; ++i) {
+        if (time > this.lights[i].nextChange) {
+            this.changeColour(i);
+            this.lights[i].nextChange = time + (1+2*Math.random())*750;
+        }
+    }
+}
+
+FlickeryLights.prototype.resize = function() {
+    this.setupSizeScale();
+}
     
 var MainAnimLoop = function() {
     this.loader = new PIXI.loaders.Loader();
@@ -576,7 +570,6 @@ var MainAnimLoop = function() {
     this.renderer = PIXI.autoDetectRenderer(1024,512); //Will be changed by resize
     document.getElementById("graphicsSpace").appendChild(this.renderer.view);
     this.stage = new PIXI.Container();
-    this.resize(true);
 }
 
 //Add layers. Must be added back to front. Might add a addLayerAt method if needed.
@@ -613,6 +606,7 @@ MainAnimLoop.prototype.load = function(andStart) {
             }
         }
         that.loaded = true;
+        that.resize(true);
         that.ticker.start();
     }
     var key;
@@ -717,18 +711,18 @@ MainAnimLoop.prototype.update = function() {
 
 var animLoop = new MainAnimLoop();
 var foreground = new ForegroundFlakes();
-var nearBackground = new BackgroundFlakes(1.0,50); //TODO: Just set up a single background flake layer with its own depth. Should be speedy enough
+var nearBackground = new BackgroundFlakes(0.8,50); 
 var farBackground = new BackgroundFlakes(0.5,100);
 //var tree = new Tree();
 var wind = new Wind("wind");
 var backdrop = new BackgroundImage("backdrop","backdrop.png");
+var lights = new FlickeryLights([[1035,655,18],[781,736,12]],"lights", "light.png");
 
 animLoop.addLayer(backdrop);
+animLoop.addLayer(lights);
 animLoop.addLayer(farBackground);
-//animLoop.addLayer(tree);
 animLoop.addLayer(nearBackground);
 animLoop.addLayer(foreground);
-//TODO: add background image
 animLoop.addLayer(wind);
 animLoop.start();
 
