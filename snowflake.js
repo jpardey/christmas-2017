@@ -536,6 +536,8 @@ FlickeryLights.prototype.setupSizeScale = function(i) {
 }
 
 FlickeryLights.prototype.changeColour = function (i) {
+    if (Math.random() > 0.9) {this.lights[i].alpha=0}
+    else {this.lights[i].alpha=1}
     var j = Math.floor(Math.random()*this.colours.length);
     this.lights[i].tint = this.colours[j];
 }
@@ -544,7 +546,7 @@ FlickeryLights.prototype.update = function(time, delta) {
     for (i=0; i<this.lights.length; ++i) {
         if (time > this.lights[i].nextChange) {
             this.changeColour(i);
-            this.lights[i].nextChange = time + (1+2*Math.random())*750;
+            this.lights[i].nextChange = time + (1+2*Math.random())*1500;
         }
     }
 }
