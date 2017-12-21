@@ -1,11 +1,13 @@
 body {
 margin: 0px;
 padding: 0px;
+font-color: #FFFFFF;
 }
 
 html {
 margin: 0px;
 padding: 0px;
+overflow-y: scroll;
 }
 
 #graphicsSpace {
@@ -16,3 +18,5 @@ text-align: center;
 padding-top:0;
 padding-bottom:0;
 }
+
+

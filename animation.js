@@ -641,15 +641,15 @@ MainAnimLoop.prototype.stop = function() {
     this.ticker.stop();
 }
 
+
 MainAnimLoop.prototype.resize = function(first) {
     var minR = 1.0;
     var maxR = 2.0; //Based on background image applicable regions.
     var referenceWidth = 1024;
     var referenceHeight = 512;
-    //Get view width and height
-    var vW = document.documentElement.clientWidth;
-    var vH = document.documentElement.clientHeight;
-
+    var vW = document.documentElement.clientWidth //  document.documentElement.clientWidth;
+    var vH = document.documentElement.clientHeight // document.documentElement.clientHeight;
+    
     //What aspect ratio would this give us, if we went full?
     var vR = vW/vH;
 
