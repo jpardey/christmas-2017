@@ -407,6 +407,7 @@ Wind.prototype.setup = function(mainLoop) {
 
 function sq(x) {return x*x;}
 
+// Updates wind value and spline points. 
 Wind.prototype.update = function(time, delta) {
     while (time > this.basetime + this.x1) {
         this.basetime += this.x1;
@@ -421,18 +422,22 @@ Wind.prototype.update = function(time, delta) {
     var t = time - this.basetime; 
     var t1 = this.x1;
     var t2 = this.x1 + this.x2;
-    
+        //Lagrange interpolation. t1, t2 > 0, t2 > t1, so no opportunity for singularity 
     this.v =    this.v0 * (t - t1)/(t1) * (t-t2)/(t2) +  //Negatives cancel
                 this.v1 * (t)/(t1) * (t-t2)/(t1-t2) +
                 this.v2 * (t)/(t2) * (t-t1)/(t2-t1)
 
 }
 
+//Background image: Sets up a background image, and sets up coordinate transforms.
+//Cropping and moving of image is hardcoded for the image in use.
 var BackgroundImage = function(name,image) {
     this.image = image;
     this.key=name;
     this.height=512; //Temp values to preserve sanity
     this.width = 1024;
+    this.tHeight=512; //Will be rewritten with correct values after image loaded
+    this.tWidth=1024;
 }
 
 BackgroundImage.prototype.setup=function(mainLoop) {
@@ -443,6 +448,7 @@ BackgroundImage.prototype.setup=function(mainLoop) {
     return this.container;
 }
 
+//Once image loaded, get the real texture height and widths
 BackgroundImage.prototype.postLoad = function() {
     var texture = this.main.loader.resources[this.key].texture;
     this.bgimg = new PIXI.Sprite(texture);
@@ -456,8 +462,6 @@ BackgroundImage.prototype.resize = function() {
     this.bgimg.scale.set(scale,scale);
     this.bgimg.x = this.getScreenX(0);
     this.bgimg.y = this.getScreenY(0);
-    console.log(this.bgimg.x);
-    console.log(scale);
 }
 
 //Efficiency isn't paramount here. Could cache these things after resize,
@@ -472,15 +476,13 @@ BackgroundImage.prototype.getScale = function() {
 BackgroundImage.prototype.getScreenX = function (x) {
     var scale = this.getScale();
     var ratio = this.main.width/this.main.height;
-    //r = 2: 0 offset.
-    //r = 1: -this.main.width/2
-    console.log(ratio);
-    return x*scale + (ratio-2)*this.main.height;
+    return x*scale + (ratio-2)*this.main.height;  //Hardcoded for the ratios here.
+        //Can introduce a scaling factor for different pan effect
 }
 
 BackgroundImage.prototype.getScreenY = function (y) {
     var scale = this.getScale();
-    return y*scale;
+    return y*scale; //Again, hardcoded to the particular scaling used
 }
 
 var FlickeryLights = function(lights, key, texture) {
@@ -491,7 +493,6 @@ var FlickeryLights = function(lights, key, texture) {
 
 FlickeryLights.prototype.setup = function(mainLoop) {
     this.main = mainLoop;
-    //backdrop may not be installed at this point
     this.container = new PIXI.particles.ParticleContainer(1000, {
         scale: true,
         position:true,
@@ -519,7 +520,8 @@ FlickeryLights.prototype.postLoad = function () {
     this.setupSizeScale();
 }
 
-FlickeryLights.prototype.setupSizeScale = function(i) {
+//Sets up the scale and position and such for each light
+FlickeryLights.prototype.setupSizeScale = function() {
     var sprite;
     var size;
     for (i=0; i<this.lights.length; ++i) {
@@ -535,6 +537,7 @@ FlickeryLights.prototype.setupSizeScale = function(i) {
     }
 }
 
+// Picks a random tint, and hides the light 1/10 of the time
 FlickeryLights.prototype.changeColour = function (i) {
     if (Math.random() > 0.9) {this.lights[i].alpha=0}
     else {this.lights[i].alpha=1}
@@ -720,14 +723,15 @@ var wind = new Wind("wind");
 var backdrop = new BackgroundImage("backdrop","backdrop.png");
 var lights = new FlickeryLights(lightArray,"lights", "light.png");
 
+animLoop.addLayer(wind);
 animLoop.addLayer(backdrop);
 animLoop.addLayer(lights);
 animLoop.addLayer(farBackground);
 animLoop.addLayer(nearBackground);
 animLoop.addLayer(foreground);
-animLoop.addLayer(wind);
 animLoop.start();
 
+//Simple callback to resize after a predefined interval
 var waitThenResize = (function() {
     var timeoutID = false;
 
@@ -744,7 +748,3 @@ var waitThenResize = (function() {
 }) ();
 
 window.addEventListener("resize", waitThenResize);
-
-//testDraw(genSnowflakeMesh());
-
-//canvas.addEventListener("click", addAndDraw);
