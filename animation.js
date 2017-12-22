@@ -1,3 +1,5 @@
+var msg = document.getElementById("heading")
+
 //Get new points array mirrored around the 30 deg CW axis 
 function getMirrored30(points) {
     var i;
@@ -301,7 +303,6 @@ var ForegroundFlakes = function() {
 ForegroundFlakes.prototype.resize = function() {
     var i;
     var s;
-    var scaleFactor = this.main.globalScale/this.main.lastScale;
     var widthFactor = this.main.width / this.main.lastWidth;
     var heightFactor = this.main.height / this.main.lastHeight;
     var newScale;
@@ -312,8 +313,9 @@ ForegroundFlakes.prototype.resize = function() {
         s.x *= widthFactor;
         s.y *= heightFactor;
         sizeFactor = this.main.globalScale/s.origGlobalScale;
-        s.size = s.origSize*sizeFactor;
+        //s.size = s.origSize*sizeFactor;
         newScale = sizeFactor;
+        s.size = newScale * s.origSize
         s.scale.set(newScale,newScale);
         //console.log(newScale);
         s.anchor.set(0.5,0.5)
@@ -533,7 +535,6 @@ FlickeryLights.prototype.setupSizeScale = function() {
         sprite.x = this.main.backdrop.getScreenX(this.lightsData[i][0]);
         sprite.y = this.main.backdrop.getScreenY(this.lightsData[i][1]);
         sprite.nextChange = -1000;
-        console.log(sprite.x,sprite.y,sprite.width);
     }
 }
 
@@ -588,6 +589,7 @@ MainAnimLoop.prototype.addLayer = function(obj) {
 }
 
 MainAnimLoop.prototype.start = function() {
+    msg.innerHTML = "Starting animation..."
     if (this.loaded) {
         this.ticker.start();
     }
@@ -598,7 +600,6 @@ MainAnimLoop.prototype.start = function() {
 
 
 MainAnimLoop.prototype.load = function(andStart) {
-    //TODO: Make andStart work?
     var that=this;
     var postLoad = function() { //This will be called, as you'd expect, after everything's been loaded
         //console.log("Postload function")
@@ -613,6 +614,7 @@ MainAnimLoop.prototype.load = function(andStart) {
         that.loaded = true;
         that.resize(true);
         that.ticker.start();
+        msg.innerHTML = "Merry Christmas!"
     }
     var key;
     var value;
@@ -641,6 +643,10 @@ MainAnimLoop.prototype.stop = function() {
     this.ticker.stop();
 }
 
+MainAnimLoop.prototype.setResolutionFactor = function(value) {
+    this.resolutionFactor = value;
+    this.resize();
+}
 
 MainAnimLoop.prototype.resize = function(first) {
     var minR = 1.0;
@@ -741,10 +747,36 @@ var waitThenResize = (function() {
         {   
             timeoutID = false;
             animLoop.resize(false);
-        }, 500);
+        }, 250);
     }
 
     return inner;
 }) ();
 
 window.addEventListener("resize", waitThenResize);
+
+var rescale = document.getElementById("rescale")
+
+var graphicsSpace = document.getElementById("graphicsSpace")
+rescale.addEventListener("change", function() {
+    animLoop.setResolutionFactor(rescale.value);
+    console.log("Setting resolution factor to" + value);
+})
+
+var fullscreenMethods = ["requestFullscreen", "requestFullScreen", "mozRequestFullScreen", "webkitRequestFullscreen","msRequestFullscreen"];
+
+var j;
+for (j=0; j<fullscreenMethods.length;++j) {
+    if (fullscreenMethods[j] in graphicsSpace){
+        document.getElementById("fullscreen").addEventListener("click", function() {
+            console.log("requested fullscreen");
+            graphicsSpace[fullscreenMethods[j]].call(graphicsSpace);
+        });
+        break;
+    }
+}
+if (j>=fullscreenMethods.length) {
+    document.getElementById("fullscreencontainer").innerHTML = "";
+}
+
+msg.innerHTML = "Javascript Loaded..."

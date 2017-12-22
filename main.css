@@ -1,8 +1,26 @@
 body {
 margin: 0px;
 padding: 0px;
-font-color: #FFFFFF;
+color: #FFFFFF;
+font-family: 'Oswald', sans-serif;
 }
+
+.below {
+padding:4px;
+max-width:800px;
+}
+
+.formelem {
+display:block;
+}
+
+div.options {}
+
+.btn {
+width:200px;
+display:block;
+}
+
 
 html {
 margin: 0px;
