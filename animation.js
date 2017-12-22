@@ -823,7 +823,12 @@ var customText = {};
 
 if (searchString) {
     console.log(searchString);
-    var encodedString = searchString.match(/message=([^&]*)/)[1];
+    try {
+        var encodedString = searchString.match(/message=([^&]*)/)[1];
+    }
+    catch (e) {
+        console.log("couldn't understand request string, ignoring");
+    }
     if (encodedString) {
         console.log(encodedString);
         try {

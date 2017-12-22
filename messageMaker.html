@@ -26,14 +26,14 @@ document.getElementById("generate").addEventListener("click", function () {
     var enc;
     var link = document.getElementById("linkout") ;
     for (i = 0; i<names.length; ++i) {
-        v = document.getElementById(names[i]);
+        v = document.getElementById(names[i]).value;
         if (v) {
             textObj[names[i]] = v;
         }
     }
     enc = encodeURIComponent(btoa(JSON.stringify(textObj)));
-    link.innerHTML="jpardey.github.io/christmas-2017/index.html?"+enc;
-    link.href = "https://" + link.innerHTML;
+    link.innerHTML="index.html?message="+enc;
+    link.href = link.innerHTML;
 });
 </script>
 </html>
