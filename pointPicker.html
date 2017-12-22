@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html>
+<head>
+</head>
+<body>
+<img id=image src="backdrop.png" />
+<script> 
+var img = document.getElementById("image");
+img.addEventListener("mousedown",function(e) {
+    if (e.which == 1) {
+        console.log("[" + (e.offsetX) + "," + (e.offsetY) + "],");
+    }
+    else if (e.which == 2) {
+        console.log("BREAK");
+    }
+    e.preventDefault();
+    return false;
+});
+
+
+</script>
+</body>
+</html>
