@@ -558,6 +558,95 @@ FlickeryLights.prototype.update = function(time, delta) {
 FlickeryLights.prototype.resize = function() {
     this.setupSizeScale();
 }
+
+var TextLayer = function(textObj) {
+    this.firstText = textObj.firstLine;
+    this.lastText = textObj.lastLine;
+    this.firstFont = new PIXI.TextStyle({align:"left",fontFamily:"'Almendra', serif",fontStyle:"italic",fontWeight:"700",wordWrap:true,fill:"#CC0000"})
+    this.lastFont = new PIXI.TextStyle({align:"right",fontFamily:"'Almendra', serif",fontStyle:"italic",fontWeight:"700",wordWrap:true,fill:"#00CC44"})
+    this.firstSize = textObj.firstSize;
+    this.lastSize = textObj.lastSize;
+    this.display = true;
+    this.alpha = 0;
+    this.nextEvent = -100;
+    this.state = 0;
+}
+
+TextLayer.prototype.setup = function(mainLoop) {
+    this.main = mainLoop;
+    this.container = new PIXI.Container();
+    this.first = new PIXI.Text(this.firstText, this.firstFont);
+    this.last = new PIXI.Text(this.lastText, this.lastFont);
+    this.first.anchor.set(0,0);
+    this.last.anchor.set(1,1);
+    this.container.addChild(this.first);
+    this.container.addChild(this.last);
+    this.first.alpha = 0;
+    this.last.alpha = 0;
+    return this.container;
+}
+
+TextLayer.prototype.resize = function() {
+    if (!this.display) return; //All done, don't resize
+     
+    this.firstFont.fontSize = Math.round(this.main.globalScale * this.firstSize);
+    this.lastFont.fontSize = Math.round(this.main.globalScale * this.lastSize);
+    this.firstFont.wordWrapWidth = Math.round(this.main.width*0.9);
+    this.lastFont.wordWrapWidth = Math.round(this.main.width*0.6);
+    this.first.x = this.main.width * 0.1;
+    this.first.y = this.main.height * 0.1;
+    this.last.x = this.main.width * 0.9; //Note anchor set to bottom right;
+    this.last.y = this.main.height * 0.9;
+}
+
+TextLayer.prototype.update = function(time, delta) {
+    //Brings up font, then fades it after 10 seconds.
+    if (!this.display) return; //All done, don't resize
+    switch (this.state){
+        case 0:
+            this.first.alpha += delta/3000
+            if (this.first.alpha >= 0.5) {
+                this.state = 1
+                //This branch falls through!
+            }
+            else {
+                break; 
+            }
+        case 1:
+            this.first.alpha += delta/3000
+            this.last.alpha += delta/3000
+            if (this.first.alpha >= 1) {
+                this.first.alpha = 1;
+                this.state = 2;
+            }
+            else {
+                break;
+            }
+        case 2:
+            this.last.alpha += delta/3000
+            if (this.last.alpha >= 1) {
+                this.last.alpha = 1;
+                this.state = 3;
+                this.nextEvent = time + 10000;
+            }
+            break;
+         case 3:
+            if (time > this.nextEvent) { 
+                this.first.alpha -= delta/2000
+                this.last.alpha = this.first.alpha;
+                if (this.first.alpha <= 0) {
+                    this.first.alpha = 0;
+                    this.display = false; //All done!
+                    this.container.removeChild(this.first);
+                    this.container.removeChild(this.last);
+                }
+            }
+            break;
+    }
+
+}
+
+
     
 var MainAnimLoop = function() {
     this.loader = new PIXI.loaders.Loader();
@@ -687,7 +776,7 @@ MainAnimLoop.prototype.resize = function(first) {
     this.renderer.view.style.height = this.divHeight+"px";
     this.renderer.resize(this.width, this.height);
 
-    this.globalScale = scale;
+    this.globalScale = scale * this.resolutionFactor;
     if (first) { //Set to init value if first time through
         this.lastScale=this.globalScale; 
         this.lastWidth = this.width;
@@ -698,7 +787,7 @@ MainAnimLoop.prototype.resize = function(first) {
     for (i=0; i<this.layers.length; ++i) {
         if ("resize" in this.layers[i]) {this.layers[i].resize.call(this.layers[i], first);}
     }
-
+    //These are for changing screen positions of sprites
     this.lastScale=this.globalScale; //Done resizing
     this.lastWidth = this.width;
     this.lastHeight = this.height;
@@ -720,14 +809,52 @@ MainAnimLoop.prototype.update = function() {
     this.renderer.render(this.stage);
 }
 
+//Default card message
+var textObj = {
+"firstLine" : "Merry Christmas!",
+"firstSize" : 60,
+"lastLine" : "...And a happy new year!",
+"lastSize" : 45
+}
+
+//Check for custom text.
+var searchString = window.location.search;
+var customText = {};
+
+if (searchString) {
+    console.log(searchString);
+    var encodedString = searchString.match(/message=([^&]*)/)[1];
+    if (encodedString) {
+        console.log(encodedString);
+        try {
+            customText = JSON.parse(atob(encodedString + "=")); 
+        }
+        catch (e) {
+            msg.innerHTML = "Couldn't load custom message, sorry!";
+            throw(e);
+        }
+        try {
+            window.history.pushState({}, document.title, "index.html");
+        }
+        catch (e) {
+            console.log(e);
+        }
+    }
+}
+console.log(customText);
+
+Object.assign(textObj, customText);
+
+console.log(textObj);
+
 var animLoop = new MainAnimLoop();
 var foreground = new ForegroundFlakes();
 var nearBackground = new BackgroundFlakes(0.8,50); 
 var farBackground = new BackgroundFlakes(0.5,100);
-//var tree = new Tree();
 var wind = new Wind("wind");
 var backdrop = new BackgroundImage("backdrop","backdrop.png");
 var lights = new FlickeryLights(lightArray,"lights", "light.png");
+var text = new TextLayer(textObj);
 
 animLoop.addLayer(wind);
 animLoop.addLayer(backdrop);
@@ -735,6 +862,9 @@ animLoop.addLayer(lights);
 animLoop.addLayer(farBackground);
 animLoop.addLayer(nearBackground);
 animLoop.addLayer(foreground);
+animLoop.addLayer(text);
+
+//Run the animation!
 animLoop.start();
 
 //Simple callback to resize after a predefined interval
@@ -754,22 +884,25 @@ var waitThenResize = (function() {
 }) ();
 
 window.addEventListener("resize", waitThenResize);
+var fullscreenEvents = ["fullscreenchange", "mozfullscreenchange", "webkitfullscreenchange", "msfullscreenchange"];
+var j;
+for (j = 0; j<fullscreenEvents.length; ++j) {
+    //Is this necessary at all? Probably not. Still, due to the debouncer it won't cause any trouble
+    document.addEventListener(fullscreenEvents[j], waitThenResize);
+}
 
 var rescale = document.getElementById("rescale")
 
 var graphicsSpace = document.getElementById("graphicsSpace")
 rescale.addEventListener("change", function() {
     animLoop.setResolutionFactor(rescale.value);
-    console.log("Setting resolution factor to" + value);
 })
 
 var fullscreenMethods = ["requestFullscreen", "requestFullScreen", "mozRequestFullScreen", "webkitRequestFullscreen","msRequestFullscreen"];
 
-var j;
 for (j=0; j<fullscreenMethods.length;++j) {
     if (fullscreenMethods[j] in graphicsSpace){
         document.getElementById("fullscreen").addEventListener("click", function() {
-            console.log("requested fullscreen");
             graphicsSpace[fullscreenMethods[j]].call(graphicsSpace);
         });
         break;
