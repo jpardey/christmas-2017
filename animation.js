@@ -827,7 +827,7 @@ if (searchString) {
     if (encodedString) {
         console.log(encodedString);
         try {
-            customText = JSON.parse(atob(encodedString + "=")); 
+            customText = JSON.parse(atob(decodeURIComponent(encodedString))); 
         }
         catch (e) {
             msg.innerHTML = "Couldn't load custom message, sorry!";
