@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Card Composer 2000</title>
+</head>
+<body>
+first Line
+<input id=firstLine type=text /><br />
+first size
+<input id=firstSize type=number /><br />
+last Line
+<input id=lastLine type=text /><br />
+last size
+<input id=lastSize type=number /><br />
+<button id=generate>Generate</button><br />
+
+<a id=linkout> </a>
+</body>
+
+<script>
+document.getElementById("generate").addEventListener("click", function () {
+    var textObj = { }
+    var names = ["firstLine", "firstSize", "lastLine", "lastSize"];
+    var i;
+    var v;
+    var enc;
+    var link = document.getElementById("linkout") ;
+    for (i = 0; i<names.length; ++i) {
+        v = document.getElementById(names[i]).value;
+        if (v) {
+            textObj[names[i]] = v;
+        }
+    }
+    enc = encodeURIComponent(btoa(JSON.stringify(textObj)));
+    link.innerHTML="index.html?message="+enc;
+    link.href = link.innerHTML;
+});
+</script>
+</html>
