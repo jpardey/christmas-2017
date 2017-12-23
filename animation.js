@@ -896,8 +896,8 @@ animLoop.addLayer(backdrop);
 animLoop.addLayer(lights);
 animLoop.addLayer(farBackground);
 animLoop.addLayer(nearBackground);
-animLoop.addLayer(foreground);
 animLoop.addLayer(text);
+animLoop.addLayer(foreground);
 
 //Run the animation!
 animLoop.start();
