@@ -319,7 +319,6 @@ ForegroundFlakes.prototype.resize = function() {
         newScale = sizeFactor;
         s.size = newScale * s.origSize
         s.scale.set(newScale,newScale);
-        //console.log(newScale);
         s.anchor.set(0.5,0.5)
     }
 }
@@ -420,7 +419,6 @@ Wind.prototype.update = function(time, delta) {
         this.v1 = this.v2;
         this.x2 = WindTimeGen();
         this.v2 = WindValGen();
-        //console.log(this.v2);
     }
 
     var t = time - this.basetime; 
@@ -723,12 +721,10 @@ MainAnimLoop.prototype.load = function(andStart) {
     try {
     var that=this;
     var postLoad = function() { //This will be called, as you'd expect, after everything's been loaded
-        //console.log("Postload function")
         try {
         that.realtime = Date.now();
         var i;
         for (i=0; i<that.layers.length; ++i) {
-            //console.log(that.layers[i])
             if ("postLoad" in that.layers[i]) {
                 that.layers[i].postLoad.call(that.layers[i]);
             }
@@ -866,7 +862,6 @@ var searchString = window.location.search;
 var customText = {};
 
 if (searchString) {
-    console.log(searchString);
     try {
         var encodedString = searchString.match(/message=([^&]*)/)[1];
     }
@@ -874,9 +869,9 @@ if (searchString) {
         console.log("couldn't understand request string, ignoring");
     }
     if (encodedString) {
-        console.log(encodedString);
         try {
-            customText = JSON.parse(atob(decodeURIComponent(encodedString))); 
+            //Laziest way to handle data in the search string.
+            customText = JSON.parse(decodeURIComponent(atob(decodeURIComponent(encodedString)))); 
         }
         catch (e) {
             msg.innerHTML = "Couldn't load custom message, sorry!";
@@ -890,11 +885,8 @@ if (searchString) {
         }
     }
 }
-console.log(customText);
 
 Object.assign(textObj, customText);
-
-console.log(textObj);
 
 var animLoop = new MainAnimLoop();
 var foreground = new ForegroundFlakes();
@@ -969,9 +961,12 @@ msg.innerHTML = "Javascript Loaded..."
 
 }
 catch (e) {
-errorReport(e)
+errorReport(e);
 }
+
 function errorReport(e) {
     document.getElementById("heading").innerHTML = "Javascript error! Please try a different browser (Firefox, Chrome, or Edge), or email me!";
+    try {animLoop.stop();} catch (e) {}
+    document.getElementById("graphicsSpace").style.display = "none";
     throw e;
 }

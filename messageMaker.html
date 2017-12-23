@@ -31,7 +31,7 @@ document.getElementById("generate").addEventListener("click", function () {
             textObj[names[i]] = v;
         }
     }
-    enc = encodeURIComponent(btoa(JSON.stringify(textObj)));
+    enc = encodeURIComponent(btoa(encodeURIComponent(JSON.stringify(textObj))));
     link.innerHTML="index.html?message="+enc;
     link.href = link.innerHTML;
 });
