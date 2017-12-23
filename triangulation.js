@@ -1,10 +1,23 @@
 //Simple Delaunay triangulation.
 //All points as [x,y] arrays.
-var Triangulation = (function () {
+
+//This is very rough. Many corners were cut to keep the code simple.
+//For instance, the super-triangle used in the algorithm isn't fully
+//removed from the output. Furthermore, there are a few situations where
+//the convex hull may not be in the edge set. No attempts were made for
+//good numerical stability. Seems to work well enough for my Christmas card,
+//though.
+var Triangulation;
+try {
+Triangulation= (function () {
     function sq(x) {
         return x*x;
     }
 
+    //Triangulation constructor
+    //ma, mb, mc: [x,y] coords for the super-triangle. This needs to
+    //contain all other points. If any other triangle has a circumcircle containing
+    //one of these points, the algorithm may fail
     function Triangulation(ma, mb, mc) {
         this.points=[] ; 
         this.points.push(ma);
@@ -30,7 +43,6 @@ var Triangulation = (function () {
         var bcx = c[0] - b[0]; 
         var aby = b[1] - a[1]; 
         var bcy = c[1] - b[1]; 
-        var ccw = abx*bcy - aby*bcx; //Cross product of AB and BC. Positive if points in CCW order, negative otherwise
         var adx = d[0] - a[0];
         var bdx = d[0] - b[0];
         var cdx = d[0] - c[0];
@@ -43,15 +55,11 @@ var Triangulation = (function () {
         var cd2 = cdy*cdy + cdx*cdx;
 
         var detn = adx*bdy*cd2 + cdx*ady*bd2 + bdx*cdy*ad2 - adx*cdy*bd2 - bdx*ady*cd2 - cdx*bdy*ad2;
+        var ccw = abx*bcy - aby*bcx; //Cross product of AB and BC. Positive if points in CCW order, negative otherwise
         return (ccw > 0) ? (detn > 0) : (detn < 0);
     }
 
-    function MSTcompareFunc(a,b) {
-        if (a[0] > b[0]) return 1;
-        else if (a[0] === b[0]) return 0;
-        else return -1;
-    }
-
+    //Return the triangles of the triangulation, ignoring those connected to supertriangle 
     Triangulation.prototype.getTriangulation = function() {
         var realTriangles = [];
         var i;
@@ -64,11 +72,12 @@ var Triangulation = (function () {
         } 
         return realTriangles;
     }
-
+    //Function to label edges
     Triangulation.prototype.edgeCode = function(i,j) {
         return (i>j)? i*this.points.length+j : j*this.points.length+i;
     }
 
+    //Return all non-supertriangle edges
     Triangulation.prototype.getEdges = function () {
         var j;
         var k;
@@ -80,12 +89,19 @@ var Triangulation = (function () {
             for (k = 0; k<3; ++k) {
                 a = this.triangles[j][k];
                 b = this.triangles[j][(k+1)%3]; //Next node
-                if ((a < 3) || (b<3)) continue;
-                edgecode = this.edgeCode(a,b); 
-                edges[edgecode] = [a,b];  //Add verticies as value to reduce string ops slightly.
+                if ((a < 3) || (b<3)) continue; //disregard any edge connected to supertriangle
+                edgecode = this.edgeCode(a,b);  //Get order-independent label for edge
+                edges[edgecode] = [a,b];  //Add edge. Each can show up in multiple triangles
             } 
         }
         return Object.values(edges);
+    }
+
+    //Sorts based on first element of array
+    function MSTcompareFunc(a,b) {
+        if (a[0] > b[0]) return 1;
+        else if (a[0] === b[0]) return 0;
+        else return -1;
     }
 
     Triangulation.prototype.getMST = function() {
@@ -195,3 +211,8 @@ var Triangulation = (function () {
     }
     return Triangulation;
 })();
+}
+catch (e) {
+document.getElementById("heading").innerHTML = "Javascript error! Please try a different browser (Firefox, Chrome, or Edge), or email me!";
+throw e;
+}

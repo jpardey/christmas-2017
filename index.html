@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
+<meta charset="UTF-8">
 <title>Merry Christmas!</title>
 <link href="https://fonts.googleapis.com/css?family=Oswald" rel="stylesheet">
 <link rel="stylesheet" type="text/css" href="main.css" />
@@ -10,8 +11,8 @@
 
 </div>
 <div class="below">
-<h1 id=heading>Javascript unloaded or failed...</h1>
-<p>If the animation doesn't show up, or acts weird, please email me at <a href="mailto:jpardey@gmail.com">jpardey@gmail.com</a>, or add an issue on the <a href="https://www.github.com/jpardey/christmas-2017">GitHub project</a></p>
+<h1 id=heading>Loading...</h1>
+<p>If the animation doesn't show up after a minute, or acts weird, please email me at <a href="mailto:jpardey@gmail.com">jpardey@gmail.com</a>, or add an issue on the <a href="https://www.github.com/jpardey/christmas-2017">GitHub project</a></p>
 <h2>Options</h2>
 <div class="options">
 <label class="formelem" for="rescale">Resolution reduction factor (may increase performance)</label>
@@ -26,21 +27,7 @@
 <button class=btn id="fullscreen">Go Fullscreen</button>
 </div>
 </div>
-
-<h2>Notes</h2>
-<p>
-This won't work on Internet Explorer. Sorry about that! If you don't have another browser you can use, I'd happily add support.
-<p>
-If this runs too slowly for you, try changing the resolution factor in the menu below. It makes things grainier, but it should be a bit faster. Gives it that VHS charm.
-<p>
-This was partially an excuse to play around with generative graphics. The large snowflakes in the front are generated from random numbers, using a triangulation algorithm and minimum spanning tree stuff. It's not great code, but feel free to poke around at it; I'll try to document and organize it better if I get a chance.
-<p>
-The only JavaScript library used here was <a href="http://www.pixijs.com">PIXI.js</a>, to efficiently render the scene. It's incredible.
-<p>
-
 </div>
-
-
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pixi.js/4.6.2/pixi.min.js"></script>
 <script src="lightpoints.js"></script>

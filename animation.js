@@ -1,5 +1,6 @@
 var msg = document.getElementById("heading")
-
+//Yep, just gonna wrap the whole thing in a try/catch. Sorry.
+try {
 
 //Get new points array mirrored around the 30 deg CW axis 
 function getMirrored30(points) {
@@ -719,9 +720,11 @@ MainAnimLoop.prototype.start = function() {
 
 
 MainAnimLoop.prototype.load = function(andStart) {
+    try {
     var that=this;
     var postLoad = function() { //This will be called, as you'd expect, after everything's been loaded
         //console.log("Postload function")
+        try {
         that.realtime = Date.now();
         var i;
         for (i=0; i<that.layers.length; ++i) {
@@ -734,6 +737,9 @@ MainAnimLoop.prototype.load = function(andStart) {
         that.resize(true);
         that.ticker.start();
         msg.innerHTML = "Merry Christmas!"
+        } catch (e) {
+            errorReport(e);
+        }
     }
     var key;
     var value;
@@ -755,6 +761,8 @@ MainAnimLoop.prototype.load = function(andStart) {
     else {
         postLoad(true);
     }
+    }catch (e) { errorReport(e);
+    }
 }
 
 
@@ -768,6 +776,7 @@ MainAnimLoop.prototype.setResolutionFactor = function(value) {
 }
 
 MainAnimLoop.prototype.resize = function(first) {
+    try {
     var minR = 1.0;
     var maxR = 2.0; //Based on background image applicable regions.
     var referenceWidth = 1024;
@@ -821,10 +830,12 @@ MainAnimLoop.prototype.resize = function(first) {
     this.lastScale=this.globalScale; //Done resizing
     this.lastWidth = this.width;
     this.lastHeight = this.height;
+    } catch (e) {errorReport(e);}
     
 }
 
 MainAnimLoop.prototype.update = function() {
+    try {
     var time = Date.now();
     var delta = time - this.realtime;
     if (delta>100) delta=100;
@@ -837,13 +848,16 @@ MainAnimLoop.prototype.update = function() {
         }
     }
     this.renderer.render(this.stage);
+    } catch (e) {
+        errorReport(e); 
+    }
 }
 
 //Default card message
 var textObj = {
 "firstLine" : "Merry Christmas!",
 "firstSize" : 60,
-"lastLine" : "...And a happy new year!",
+"lastLine" : "...and a happy new year!",
 "lastSize" : 45
 }
 
@@ -904,6 +918,7 @@ animLoop.start();
 
 //Simple callback to resize after a predefined interval
 var waitThenResize = (function() {
+    try {
     var timeoutID = false;
 
     var inner = function() {
@@ -916,6 +931,9 @@ var waitThenResize = (function() {
     }
 
     return inner;
+    } catch (e) {
+        errorReport(e); 
+    }
 }) ();
 
 window.addEventListener("resize", waitThenResize);
@@ -948,3 +966,12 @@ if (j>=fullscreenMethods.length) {
 }
 
 msg.innerHTML = "Javascript Loaded..."
+
+}
+catch (e) {
+errorReport(e)
+}
+function errorReport(e) {
+    document.getElementById("heading").innerHTML = "Javascript error! Please try a different browser (Firefox, Chrome, or Edge), or email me!";
+    throw e;
+}
