@@ -1,5 +1,6 @@
 var msg = document.getElementById("heading")
 
+
 //Get new points array mirrored around the 30 deg CW axis 
 function getMirrored30(points) {
     var i;
@@ -562,19 +563,40 @@ FlickeryLights.prototype.resize = function() {
 var TextLayer = function(textObj) {
     this.firstText = textObj.firstLine;
     this.lastText = textObj.lastLine;
-    this.firstFont = new PIXI.TextStyle({align:"left",fontFamily:"'Almendra', serif",fontStyle:"italic",fontWeight:"700",wordWrap:true,fill:"#CC0000"})
-    this.lastFont = new PIXI.TextStyle({align:"right",fontFamily:"'Almendra', serif",fontStyle:"italic",fontWeight:"700",wordWrap:true,fill:"#00CC44"})
     this.firstSize = textObj.firstSize;
     this.lastSize = textObj.lastSize;
     this.display = true;
     this.alpha = 0;
     this.nextEvent = -100;
     this.state = 0;
+    this.firstcontact = false;
+    this.fontLoaded = false;
+    this.font = "Almendra:700i"; 
+    var that = this;
+    WebFontConfig = { //Note scope.
+        "google": {"families": [this.font]},
+        "active": function() {
+            console.log("Font loaded");
+            that.afterFontLoad();
+        },
+        "timeout":5000,
+        "inactive": function() {
+            console.log("tired of waiting for the font to load");
+            that.afterFontLoad();
+        }
+    };
+    (function(d) { //Copied from the google web font page, since it's the 22nd
+         var wf = d.createElement('script'), s = d.scripts[0];
+         wf.src = 'https://ajax.googleapis.com/ajax/libs/webfont/1.6.26/webfont.js';
+         wf.async = true;
+         s.parentNode.insertBefore(wf, s);
+    })(document);
+
 }
 
-TextLayer.prototype.setup = function(mainLoop) {
-    this.main = mainLoop;
-    this.container = new PIXI.Container();
+TextLayer.prototype.afterFontLoad = function() {
+    this.firstFont = new PIXI.TextStyle({align:"left",fontFamily:"'Almendra', serif",fontStyle:"italic",fontWeight:"700",wordWrap:true,fill:"#CC0000"})
+    this.lastFont = new PIXI.TextStyle({align:"right",fontFamily:"'Almendra', serif",fontStyle:"italic",fontWeight:"700",wordWrap:true,fill:"#00CC44"})
     this.first = new PIXI.Text(this.firstText, this.firstFont);
     this.last = new PIXI.Text(this.lastText, this.lastFont);
     this.first.anchor.set(0,0);
@@ -583,11 +605,18 @@ TextLayer.prototype.setup = function(mainLoop) {
     this.container.addChild(this.last);
     this.first.alpha = 0;
     this.last.alpha = 0;
+    this.fontLoaded = true;
+    this.resize();
+}
+
+TextLayer.prototype.setup = function(mainLoop) {
+    this.main = mainLoop;
+    this.container = new PIXI.Container();
     return this.container;
 }
 
 TextLayer.prototype.resize = function() {
-    if (!this.display) return; //All done, don't resize
+    if (!(this.display) || !(this.fontLoaded)) return; //Nothing to display? Don't display anything
      
     this.firstFont.fontSize = Math.round(this.main.globalScale * this.firstSize);
     this.lastFont.fontSize = Math.round(this.main.globalScale * this.lastSize);
@@ -601,7 +630,8 @@ TextLayer.prototype.resize = function() {
 
 TextLayer.prototype.update = function(time, delta) {
     //Brings up font, then fades it after 10 seconds.
-    if (!this.display) return; //All done, don't resize
+    if (!(this.display) || !(this.fontLoaded)) return; //Nothing to display? Don't display anything
+
     switch (this.state){
         case 0:
             this.first.alpha += delta/3000
@@ -866,8 +896,8 @@ animLoop.addLayer(backdrop);
 animLoop.addLayer(lights);
 animLoop.addLayer(farBackground);
 animLoop.addLayer(nearBackground);
-animLoop.addLayer(foreground);
 animLoop.addLayer(text);
+animLoop.addLayer(foreground);
 
 //Run the animation!
 animLoop.start();
