@@ -28,9 +28,38 @@
 </div>
 
 <h2>Notes</h2>
-I ended up running out of time on this towards the end. 
-This was primarily an attempt to play around with procedural generated graphics.
-Each snowflake is generated with random numbers
+<p>
+This won't work on Internet Explorer. Sorry about that! If you don't have another browser you can use, I'd happily add support
+<p>
+If this runs too slowly for you, try changing the resolution factor in the menu. It makes things grainier, but it should be a bit faster. Gives it that VHS charm.
+<p>
+This was partially an excuse to play around with generative graphics. Every snowflake is generated using random numbers, in a method outlined below.
+<p>
+I know, I'm bad at drawing houses and evergreen trees. Besides drawing a better backdrop, I'd liked to have added various animals running about and stuff.
+
+<h2>Making Snowflakes</h2>
+Each snowflake is generated roughly in the following manner:
+<ol>
+<li>In a wedge, 1/12 of a circle, pick between 5 and 10 random points to base the snowflake on. 
+In addition, pick a point in the center, or two points on the edges, so that the completed snowflake will be connected.
+</li><li>
+Generate the <a href="https://en.wikipedia.org/wiki/Delaunay_triangulation">Delaunay triangulation</a> of the chosen points. Use this to generate a <a href="https://en.wikipedia.org/wiki/Minimum_spanning_tree">minimum spanning tree</a>. Add a couple more edges from the triangulation.
+</li><li>
+Mirror the design once and add together, filling up a 1/6th wedge of a circle. Then rotate five times and add, completing a full circle.
+</li><li>
+Draw the thing!
+</li>
+</ol>
+<h2>More tech stuff</h2>
+The only JavaScript library used here was <a href="http://www.pixijs.com">PIXI.js</a>, to efficiently render the scene. It's incredible.
+<p>
+The <a href="https://github.com/jmespadero/pyDelaunay2D">pyDelaunay2D</a> project for Python was a great resource
+for learning about the <a href="https://en.wikipedia.org/wiki/Bowyer–Watson_algorithm">Bowyer-Watson triangulation algorithm</a>.
+My implementation is way uglier and rougher. Since I'm using so few points, a brute force triangulation algorithm would have been just fine, but this one seemed much
+more fun to write.
+
+<p>
+
 </div>
 
 

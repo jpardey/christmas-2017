@@ -37,4 +37,7 @@ padding-top:0;
 padding-bottom:0;
 }
 
-
+.code {
+font-family: monospace;
+background-color: #222222;
+}

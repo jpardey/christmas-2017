@@ -260,7 +260,7 @@ BackgroundFlakes.prototype.update = function(time, delta){
     var sizeDeltaScale = this.size*delta*this.main.globalScale;
     for (i=0; i<10; ++i) {
         xOffsets[i]=(this.main.wind.v * .65 + 0.85*(Math.random()-.5)/40*sizeDeltaScale);
-        yOffsets[i]=((Math.random()/50+0.04)*sizeDeltaScale);
+        yOffsets[i]=((Math.random()/50+0.02)*sizeDeltaScale);
     }
     var xloop = Math.floor(Math.random()*5+5); //Will only go to 9 unless random == 1.0, which will almost surely never (probably just never) happen
     var yloop = Math.floor(Math.random()*6+5);
