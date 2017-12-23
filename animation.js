@@ -346,7 +346,7 @@ ForegroundFlakes.prototype.update = function(time,delta){
         var newSprite = spriteFromCanvas(canvas); 
         delete canvas; //This probably won't help anything, but worth a shot.
         newSprite.x = Math.random()*this.main.width; //TODO: Width param in global
-        newSprite.y = -size/2;
+        newSprite.y = -size; //size/2 would be close, but sometimes they seem to pop in, probably angle dependent.
         newSprite.origGlobalScale = this.main.globalScale;
         newSprite.size = size;
         newSprite.origSize = size;
